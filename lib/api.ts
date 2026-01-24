@@ -2,6 +2,7 @@ export interface AuditResponse {
   auditId: string;
   status: "queued" | "completed" | "failed";
   repoUrl: string;
+  error?: string;
   // Included when completed
   verdict_score?: string;
   summary?: string;

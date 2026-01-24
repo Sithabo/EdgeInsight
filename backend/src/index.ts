@@ -56,10 +56,36 @@ export class AuditWorkflow extends WorkflowEntrypoint<
 
     try {
       // Step 1: Fetch
-      const files: FileContent[] = await step.do("fetch-files", async () => {
-        // Now fully typed
-        return await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
+      // Step 1: Fetch
+      const fetchResult = await step.do("fetch-files", async () => {
+        try {
+          const f = await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
+          return { success: true, files: f };
+        } catch (e: any) {
+          return { success: false, error: e.message || "Failed to fetch repo" };
+        }
       });
+
+      if (!fetchResult.success || !fetchResult.files) {
+        await step.do("save-failed-fetch", async () => {
+          const id = this.env.AUDIT_RESULTS.idFromString(auditId);
+          const stub = this.env.AUDIT_RESULTS.get(id);
+          await stub.fetch("http://do/save", {
+            method: "POST",
+            body: JSON.stringify({
+              status: "failed",
+              error:
+                fetchResult.error ||
+                "Failed to access repository (Private or 404)",
+              repoUrl,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+        });
+        return;
+      }
+
+      const files = fetchResult.files;
 
       // Step 2: Analyze with AI
       const audit = await step.do("analyze-code", async () => {
@@ -111,7 +137,7 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         ];
 
         const response = (await this.env.AI.run(
-          "@cf/meta/llama-3.3-70b-instruct" as any,
+          "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as any,
           {
             messages,
           },

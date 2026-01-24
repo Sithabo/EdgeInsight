@@ -205,6 +205,33 @@ export default function AuditPage() {
     );
   }
 
+  if (data?.status === "failed") {
+    return (
+      <div className="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-8 max-w-md w-full">
+            <span className="material-symbols-outlined text-5xl text-red-500 mb-4">
+              error
+            </span>
+            <h1 className="text-2xl font-bold text-white mb-2">Scan Failed</h1>
+            <p className="text-slate-400 mb-6">
+              {data.error ||
+                "An unknown error occurred while processing the repository."}
+            </p>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+            >
+              <span className="material-symbols-outlined">refresh</span>
+              Try Again
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // Success State
   const verdictScore = data.verdict_score || "?";
   const scoreColorClass = verdictScore.startsWith("A")

@@ -9,13 +9,16 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const router = useRouter();
 
-  const submitAudit = (repoUrl: string) => {
+  const submitAudit = async (repoUrl: string) => {
     if (!repoUrl) return;
-    // Mock ID generation or use a hash of the URL
-    // For now, redirect to a static ID or a simple hash
-    const id = "123"; // Logic to be replaced by backend call later
-    console.log(`Auditing: ${repoUrl}`);
-    router.push(`/audit/${id}`);
+    try {
+      const { submitAudit } = await import("../lib/api");
+      const { auditId } = await submitAudit(repoUrl);
+      router.push(`/audit/${auditId}`);
+    } catch (e) {
+      console.error("Failed to start audit", e);
+      alert("Failed to start audit. Please check text URL.");
+    }
   };
 
   const handleRunAudit = () => {

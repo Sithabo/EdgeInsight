@@ -27,11 +27,12 @@ export function useAudit(auditId: string) {
             clearInterval(intervalId);
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         if (!isMounted) return;
         console.error(err);
-        // Don't necessarily stop polling on transient errors, but here we might want to log it
-        // setError(err as Error);
+        setError(err);
+        setLoading(false);
+        clearInterval(intervalId);
       }
     }
 
