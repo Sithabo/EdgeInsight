@@ -1,0 +1,26 @@
+name = "edgeinsight-backend"
+main = "src/index.ts"
+compatibility_date = "2024-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Durable Objects
+[[durable_objects.bindings]]
+name = "AUDIT_RESULTS"
+class_name = "AuditResults"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["AuditResults"]
+
+# Workers AI
+[ai]
+binding = "AI"
+
+# Workflows
+[[workflows]]
+name = "audit-workflow"
+binding = "AUDIT_WORKFLOW"
+class_name = "AuditWorkflow"
+
+[observability]
+enabled = true

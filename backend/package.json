@@ -1,0 +1,20 @@
+{
+    "name": "edgeinsight-backend",
+    "version": "0.0.0",
+    "private": true,
+    "scripts": {
+        "deploy": "wrangler deploy",
+        "dev": "wrangler dev",
+        "start": "wrangler dev",
+        "test": "vitest",
+        "type-check": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20240101.0",
+        "typescript": "^5.0.0",
+        "wrangler": "^3.0.0"
+    },
+    "dependencies": {
+        "hono": "^4.0.0"
+    }
+}
