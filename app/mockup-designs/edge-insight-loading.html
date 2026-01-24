@@ -1,0 +1,272 @@
+<!doctype html>
+
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>EdgeInsight | AI Repository Analysis</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Roboto+Mono&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#e4812f",
+              "background-light": "#f8f7f6",
+              "background-dark": "#121212",
+            },
+            fontFamily: {
+              display: ["Inter", "sans-serif"],
+              mono: ["Roboto Mono", "monospace"],
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .glass-panel {
+        background: rgba(33, 24, 17, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(228, 129, 47, 0.1);
+      }
+      .pipeline-glow {
+        box-shadow: 0 0 20px rgba(228, 129, 47, 0.15);
+      }
+      .grain-overlay {
+        background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDs2rPdQwW2LRRPFZ5X3IRfqLBQJ0rRDJixNF8BdFqOyfTTo7rJf1m_D0S6qlYyWWjFz4RqnaYLPrSsE_AcJGgmx9d54H23STMRPt3TGWcKpfTxRzk5yZkySWI9ou5nkp2AeGyeqF_VkM_Ved3hLDOPO-FzvxOD9MlmnFw9WlD6S-11tjRiuoUiOzWYC93zsz7dyYaLtrBAn10nY90DfTu_7tERXT9cy0BczHqR-iXFCAw5fwaMI39nU9w5TZPAJVdAFDzC0LiBsu7E);
+        opacity: 0.03;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background-light dark:bg-background-dark font-display text-white selection:bg-primary/30 overflow-hidden"
+  >
+    <!-- Ghosted Dashboard Background -->
+    <div
+      class="fixed inset-0 z-0 opacity-10 blur-md pointer-events-none scale-105"
+    >
+      <div class="p-10 grid grid-cols-3 gap-6">
+        <div class="h-64 bg-primary/20 rounded-xl"></div>
+        <div class="h-64 bg-primary/20 rounded-xl col-span-2"></div>
+        <div class="h-40 bg-primary/20 rounded-xl"></div>
+        <div class="h-40 bg-primary/20 rounded-xl"></div>
+        <div class="h-40 bg-primary/20 rounded-xl"></div>
+        <div class="h-96 bg-primary/20 rounded-xl col-span-3"></div>
+      </div>
+    </div>
+    <!-- Grain Overlay -->
+    <div class="fixed inset-0 z-10 pointer-events-none grain-overlay"></div>
+    <div class="relative z-20 flex flex-col min-h-screen">
+      <!-- Top Nav Bar -->
+      <header
+        class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 px-10 py-4 glass-panel"
+      >
+        <div class="flex items-center gap-4 text-white">
+          <div
+            class="size-8 flex items-center justify-center bg-primary rounded-lg"
+          >
+            <span
+              class="material-symbols-outlined text-white"
+              style="font-variation-settings: &quot;FILL&quot; 1"
+              >architecture</span
+            >
+          </div>
+          <h2 class="text-white text-xl font-bold leading-tight tracking-tight">
+            EdgeInsight
+          </h2>
+        </div>
+        <div class="flex flex-1 justify-end gap-4 items-center">
+          <div
+            class="px-3 py-1 rounded bg-primary/10 border border-primary/20 text-primary text-xs font-mono uppercase tracking-widest"
+          >
+            Pipeline Active
+          </div>
+          <div
+            class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border border-primary/20"
+            data-alt="User avatar placeholder"
+            style="
+              background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuAnwirg68YYpOervGeDPeKxypTHZHINwYP0nQlmxRdqDQKSFigu0yk2Ez88LbW8plTaSCLb2eCJFuNO2M-42cxlPiCPb1PkVYAC36OKLNfwycm_RmeGzPmATzrFEnPzefznoH9yPeRtOIUKlZFyoDZuVJCAPgLOvu4b24rQKtATwSi-hDe8xMD6Xa3OI1CKdI300e78orCb10TZOujhSCc8-iOJr-GQkwmR3ZpsfXKRq0kRoq76FNi-VkSQoShCLXVWYyj_ZlNqk5bt&quot;);
+            "
+          ></div>
+        </div>
+      </header>
+      <main class="flex-1 flex flex-col items-center justify-center px-4">
+        <!-- Headline -->
+        <div class="max-w-[800px] w-full mb-12">
+          <h1
+            class="text-white tracking-tight text-4xl md:text-5xl font-bold leading-tight text-center pb-3"
+          >
+            Analyzing Repository <span class="text-primary">Architecture</span>
+          </h1>
+          <p class="text-gray-400 text-center text-lg">
+            Scanning dependencies, commit velocity, and code quality signatures.
+          </p>
+        </div>
+        <!-- Central Data-Pipeline Animation Visual -->
+        <div
+          class="relative w-full max-w-4xl h-64 flex items-center justify-between px-12 mb-12"
+        >
+          <!-- GitHub Node -->
+          <div class="relative flex flex-col items-center gap-4 group">
+            <div
+              class="size-20 rounded-2xl glass-panel flex items-center justify-center border-2 border-primary/40 pipeline-glow"
+            >
+              <span class="material-symbols-outlined text-4xl text-white"
+                >database</span
+              >
+            </div>
+            <span
+              class="font-mono text-xs uppercase tracking-tighter text-gray-400"
+              >GitHub Source</span
+            >
+          </div>
+          <!-- Connector 1 -->
+          <div
+            class="flex-1 h-[2px] mx-4 bg-gradient-to-r from-primary/60 via-primary/20 to-primary/60 relative overflow-hidden"
+          >
+            <div
+              class="absolute inset-0 bg-primary w-20 blur-sm translate-x-[-100%] animate-[move_2s_linear_infinite]"
+            ></div>
+          </div>
+          <!-- Edge Workers Hub -->
+          <div class="relative flex flex-col items-center gap-4">
+            <div
+              class="size-32 rounded-full glass-panel flex items-center justify-center border-4 border-primary pipeline-glow relative"
+            >
+              <div
+                class="absolute inset-0 rounded-full border-2 border-primary/30 scale-125 animate-ping opacity-20"
+              ></div>
+              <span
+                class="material-symbols-outlined text-6xl text-primary animate-pulse"
+                style="font-variation-settings: &quot;FILL&quot; 1"
+                >hub</span
+              >
+            </div>
+            <span
+              class="font-mono text-xs uppercase tracking-tighter text-primary font-bold"
+              >Edge Workers Hub</span
+            >
+          </div>
+          <!-- Connector 2 -->
+          <div
+            class="flex-1 h-[2px] mx-4 bg-gradient-to-r from-primary/60 via-primary/20 to-primary/60 relative overflow-hidden"
+          >
+            <div
+              class="absolute inset-0 bg-primary w-20 blur-sm translate-x-[-100%] animate-[move_2s_linear_infinite_0.5s]"
+            ></div>
+          </div>
+          <!-- AI Analysis Node -->
+          <div class="relative flex flex-col items-center gap-4">
+            <div
+              class="size-20 rounded-2xl glass-panel flex items-center justify-center border-2 border-primary/40 pipeline-glow"
+            >
+              <span class="material-symbols-outlined text-4xl text-white"
+                >psychology</span
+              >
+            </div>
+            <span
+              class="font-mono text-xs uppercase tracking-tighter text-gray-400"
+              >AI Analysis</span
+            >
+          </div>
+        </div>
+        <!-- Progress & Status Section -->
+        <div
+          class="max-w-[640px] w-full glass-panel rounded-xl p-6 border border-white/5"
+        >
+          <div class="flex flex-col gap-4">
+            <div class="flex gap-6 justify-between items-end">
+              <div class="flex flex-col gap-1">
+                <p class="text-white text-lg font-medium leading-none">
+                  Llama 3.3 Initialization
+                </p>
+                <p class="text-primary text-xs font-mono">
+                  NODE_ID: US-EAST-1_WKR_09
+                </p>
+              </div>
+              <p
+                class="text-primary text-2xl font-bold leading-none font-mono tracking-tighter"
+              >
+                65.2%
+              </p>
+            </div>
+            <div
+              class="h-3 rounded-full bg-primary/10 overflow-hidden border border-primary/10"
+            >
+              <div
+                class="h-full rounded-full bg-primary pipeline-glow"
+                style="width: 65%"
+              ></div>
+            </div>
+            <!-- Terminal Logs -->
+            <div
+              class="bg-black/40 rounded-lg p-4 font-mono text-sm border border-white/5 min-h-[100px] flex flex-col justify-end"
+            >
+              <p class="text-gray-500 mb-1">
+                &gt; [INFO] Fetching commit history from main...
+              </p>
+              <p class="text-gray-500 mb-1">
+                &gt; [NETWORK] Establishing edge worker connection...
+              </p>
+              <p class="text-primary animate-pulse mb-1">
+                &gt; [SYSTEM] Spinning up Llama 3.3 (8B Instruct)...
+              </p>
+              <p class="text-white">
+                &gt; [DATA] Processing packets via global edge nodes...
+                <span class="inline-block w-2 h-4 bg-primary ml-1"></span>
+              </p>
+            </div>
+          </div>
+        </div>
+        <!-- Cancel Button -->
+        <div class="mt-8">
+          <button
+            class="px-8 py-2 rounded-lg border border-white/10 text-gray-500 hover:text-white hover:border-white/30 transition-all text-sm font-medium uppercase tracking-widest"
+          >
+            Cancel Analysis
+          </button>
+        </div>
+      </main>
+      <!-- Footer Info -->
+      <footer class="p-8 flex justify-center items-center gap-8 opacity-40">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">shield</span>
+          <span class="text-xs font-mono uppercase">Secure Sandbox</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">bolt</span>
+          <span class="text-xs font-mono uppercase">Vercel Edge Runtime</span>
+        </div>
+      </footer>
+    </div>
+    <style>
+      @keyframes move {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(400%);
+        }
+      }
+    </style>
+  </body>
+</html>

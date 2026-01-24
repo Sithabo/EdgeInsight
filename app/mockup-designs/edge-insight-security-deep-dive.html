@@ -1,0 +1,510 @@
+<!doctype html>
+
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>EdgeInsight Security Audit Deep Dive</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;family=Roboto+Mono&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#e4812f",
+              "background-light": "#f8f7f6",
+              "background-dark": "#121212",
+              "panel-dark": "#1a1a1a",
+              "border-dark": "#2d2d2d",
+              "danger-red": "#ff3b30",
+            },
+            fontFamily: {
+              display: ["Inter"],
+              mono: ["Roboto Mono"],
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .code-highlight-red {
+        background: linear-gradient(
+          90deg,
+          rgba(255, 59, 48, 0.2) 0%,
+          rgba(255, 59, 48, 0.05) 100%
+        );
+        border-left: 3px solid #ff3b30;
+      }
+      .ai-bubble-glow {
+        box-shadow: 0 0 15px rgba(228, 129, 47, 0.2);
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1a1a1a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased h-screen overflow-hidden"
+  >
+    <div class="flex h-full flex-col">
+      <!-- Top Navigation Bar -->
+      <header
+        class="flex items-center justify-between border-b border-border-dark bg-panel-dark px-6 py-3 shrink-0"
+      >
+        <div class="flex items-center gap-8">
+          <div class="flex items-center gap-3">
+            <div
+              class="size-8 bg-primary rounded-lg flex items-center justify-center text-white"
+            >
+              <span class="material-symbols-outlined text-xl">security</span>
+            </div>
+            <h2
+              class="text-white text-lg font-bold leading-tight tracking-tight"
+            >
+              EdgeInsight
+            </h2>
+          </div>
+          <div
+            class="flex items-center bg-border-dark/50 rounded-lg px-3 py-1.5 border border-border-dark"
+          >
+            <span class="material-symbols-outlined text-slate-400 text-sm"
+              >search</span
+            >
+            <input
+              class="bg-transparent border-none focus:ring-0 text-sm text-white placeholder:text-slate-500 w-48"
+              placeholder="Search files or issues..."
+            />
+          </div>
+        </div>
+        <div class="flex items-center gap-6">
+          <nav class="flex items-center gap-6">
+            <a
+              class="text-slate-400 hover:text-white text-sm font-medium transition-colors"
+              href="#"
+              >Dashboard</a
+            >
+            <a
+              class="text-slate-400 hover:text-white text-sm font-medium transition-colors"
+              href="#"
+              >Repositories</a
+            >
+            <a
+              class="text-white text-sm font-medium border-b-2 border-primary pb-4 mt-4 translate-y-[2px]"
+              href="#"
+              >Audit</a
+            >
+          </nav>
+          <div class="flex items-center gap-3 ml-4">
+            <button
+              class="size-9 flex items-center justify-center rounded-lg bg-border-dark text-slate-300 hover:text-white transition-colors"
+            >
+              <span class="material-symbols-outlined text-[20px]"
+                >notifications</span
+              >
+            </button>
+            <div class="h-8 w-[1px] bg-border-dark mx-1"></div>
+            <div
+              class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8 border border-border-dark"
+              data-alt="User avatar icon"
+              style="
+                background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuDC84964CVxW_N2EP2XhTGIHHMh9juQokUp9JWgGvpDhkgXR7jI03zB2nCZV5ULs3IL8U7gBgrtgK1I1Jo397PIV31gzfIXXAelAtQHFTdH_LI8FLLFxICX0eV8hIi8VdrPVINcXEVZOms2hgoATipijNoMyqol-oRkIeJYAP2m4NYlsUfuH2qoKXLlVcC1uq0EDvGOKlUnuKBuYr39eobFB-fCj8eczmMApYBml399MAgOgEyfleWxeF7E6mjfesSSMrmWhyepdOof&quot;);
+              "
+            ></div>
+          </div>
+        </div>
+      </header>
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <aside
+          class="w-64 flex flex-col justify-between bg-panel-dark border-r border-border-dark p-4 shrink-0"
+        >
+          <div class="flex flex-col gap-6">
+            <div class="flex flex-col">
+              <h1
+                class="text-white text-sm font-semibold flex items-center gap-2"
+              >
+                <span class="material-symbols-outlined text-sm text-primary"
+                  >terminal</span
+                >
+                edge-api-service
+              </h1>
+              <p class="text-slate-500 text-xs mt-1 font-mono">
+                v1.0.4-beta_release
+              </p>
+            </div>
+            <div class="flex flex-col gap-1">
+              <div
+                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-border-dark/30 hover:text-white transition-all cursor-pointer group"
+              >
+                <span
+                  class="material-symbols-outlined text-xl group-hover:text-primary transition-colors"
+                  >account_tree</span
+                >
+                <p class="text-sm font-medium">Architecture</p>
+              </div>
+              <div
+                class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-border-dark/30 hover:text-white transition-all cursor-pointer group"
+              >
+                <span
+                  class="material-symbols-outlined text-xl group-hover:text-primary transition-colors"
+                  >verified_user</span
+                >
+                <p class="text-sm font-medium">Code Quality</p>
+              </div>
+              <div
+                class="flex items-center justify-between px-3 py-2.5 rounded-lg bg-primary/10 text-primary border border-primary/20 cursor-default"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="material-symbols-outlined text-xl fill-1"
+                    >shield_with_heart</span
+                  >
+                  <p class="text-sm font-bold">Security Risks</p>
+                </div>
+                <span
+                  class="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded"
+                  >12</span
+                >
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <div
+              class="p-3 bg-border-dark/30 rounded-lg border border-border-dark"
+            >
+              <p
+                class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2"
+              >
+                Scan Status
+              </p>
+              <div class="flex items-center gap-2">
+                <div
+                  class="size-2 bg-green-500 rounded-full animate-pulse"
+                ></div>
+                <span class="text-xs text-slate-300 font-medium"
+                  >Live Monitoring Active</span
+                >
+              </div>
+            </div>
+            <button
+              class="flex w-full items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all"
+            >
+              <span class="material-symbols-outlined text-sm">download</span>
+              <span>Export Report</span>
+            </button>
+          </div>
+        </aside>
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col bg-background-dark overflow-hidden">
+          <!-- Stats Bar -->
+          <div
+            class="flex items-center justify-between p-6 bg-background-dark border-b border-border-dark shrink-0"
+          >
+            <div class="flex flex-col gap-1">
+              <p
+                class="text-slate-400 text-xs font-bold uppercase tracking-wider"
+              >
+                Security Audit Deep Dive
+              </p>
+              <h2 class="text-white text-2xl font-black tracking-tight">
+                Security Risks Panel
+              </h2>
+            </div>
+            <div class="flex gap-4">
+              <div
+                class="flex items-center gap-4 bg-panel-dark border border-border-dark px-4 py-2 rounded-xl"
+              >
+                <div class="flex flex-col">
+                  <span class="text-[10px] text-slate-500 font-bold uppercase"
+                    >Security Score</span
+                  >
+                  <span class="text-lg font-bold text-white">64/100</span>
+                </div>
+                <div class="w-[1px] h-8 bg-border-dark"></div>
+                <div class="flex flex-col">
+                  <span class="text-[10px] text-slate-500 font-bold uppercase"
+                    >Critical</span
+                  >
+                  <span class="text-lg font-bold text-danger-red">12</span>
+                </div>
+                <div class="w-[1px] h-8 bg-border-dark"></div>
+                <div class="flex flex-col">
+                  <span class="text-[10px] text-slate-500 font-bold uppercase"
+                    >Resolved</span
+                  >
+                  <span class="text-lg font-bold text-green-500">4</span>
+                </div>
+              </div>
+              <button
+                class="flex items-center justify-center rounded-lg h-11 px-4 bg-border-dark text-white text-sm font-bold hover:bg-border-dark/80 border border-slate-700 transition-all"
+              >
+                <span class="material-symbols-outlined mr-2">refresh</span>
+                Rescan Repo
+              </button>
+            </div>
+          </div>
+          <div class="flex-1 flex overflow-hidden">
+            <!-- Issues List -->
+            <div
+              class="w-80 border-r border-border-dark overflow-y-auto bg-panel-dark/30"
+            >
+              <div class="p-4 border-b border-border-dark bg-panel-dark/50">
+                <h3
+                  class="text-xs font-bold text-slate-400 uppercase tracking-widest"
+                >
+                  Flagged Vulnerabilities
+                </h3>
+              </div>
+              <!-- Issue Item Active -->
+              <div
+                class="p-4 border-b border-l-4 border-l-danger-red bg-danger-red/10 border-border-dark cursor-pointer"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <span
+                    class="bg-danger-red text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase"
+                    >Critical</span
+                  >
+                  <span class="text-slate-500 text-[10px] font-mono"
+                    >auth_controller.py</span
+                  >
+                </div>
+                <h4 class="text-white text-sm font-bold leading-snug">
+                  Hardcoded Secret Exposure
+                </h4>
+                <p class="text-slate-400 text-xs mt-1 line-clamp-2">
+                  Sensitive API credentials detected in source code without
+                  environment variable fallback.
+                </p>
+              </div>
+              <!-- Issue Item -->
+              <div
+                class="p-4 border-b border-l-4 border-l-transparent hover:bg-border-dark/50 border-border-dark cursor-pointer transition-colors"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <span
+                    class="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase"
+                    >High</span
+                  >
+                  <span class="text-slate-500 text-[10px] font-mono"
+                    >db_config.js</span
+                  >
+                </div>
+                <h4 class="text-white text-sm font-bold leading-snug">
+                  SQL Injection Risk
+                </h4>
+                <p class="text-slate-400 text-xs mt-1 line-clamp-2">
+                  Potential string concatenation in raw database queries
+                  identified in user module.
+                </p>
+              </div>
+              <!-- Issue Item -->
+              <div
+                class="p-4 border-b border-l-4 border-l-transparent hover:bg-border-dark/50 border-border-dark cursor-pointer transition-colors"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <span
+                    class="bg-yellow-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase"
+                    >Medium</span
+                  >
+                  <span class="text-slate-500 text-[10px] font-mono"
+                    >package.json</span
+                  >
+                </div>
+                <h4 class="text-white text-sm font-bold leading-snug">
+                  Vulnerable Dependency
+                </h4>
+                <p class="text-slate-400 text-xs mt-1 line-clamp-2">
+                  Package 'lodash' version 4.17.15 contains a known Prototype
+                  Pollution vulnerability.
+                </p>
+              </div>
+              <!-- More placeholders -->
+              <div
+                class="p-4 border-b border-l-4 border-l-transparent hover:bg-border-dark/50 border-border-dark cursor-pointer transition-colors"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <span
+                    class="bg-danger-red text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase"
+                    >Critical</span
+                  >
+                  <span class="text-slate-500 text-[10px] font-mono"
+                    >server.ts</span
+                  >
+                </div>
+                <h4 class="text-white text-sm font-bold leading-snug">
+                  Unrestricted CORS Policy
+                </h4>
+                <p class="text-slate-400 text-xs mt-1 line-clamp-2">
+                  Middleware allows origins from any source, exposing API to
+                  CSRF attacks.
+                </p>
+              </div>
+            </div>
+            <!-- Code Editor View -->
+            <div class="flex-1 flex flex-col relative bg-[#0d0d0d]">
+              <!-- Editor Header -->
+              <div
+                class="flex items-center justify-between px-4 py-2 border-b border-border-dark bg-panel-dark shrink-0"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-slate-500 text-sm"
+                    >description</span
+                  >
+                  <span class="text-xs text-slate-300 font-mono"
+                    >src/controllers/auth_controller.py</span
+                  >
+                </div>
+                <div class="flex items-center gap-4">
+                  <span class="text-[10px] text-slate-500 font-mono uppercase"
+                    >Python 3.10</span
+                  >
+                  <button
+                    class="text-primary text-xs font-bold hover:underline"
+                  >
+                    Copy Path
+                  </button>
+                </div>
+              </div>
+              <!-- Code Area -->
+              <div
+                class="flex-1 overflow-auto p-4 font-mono text-sm leading-6 selection:bg-primary/30"
+              >
+                <div class="flex">
+                  <!-- Line Numbers -->
+                  <div
+                    class="w-10 shrink-0 text-slate-600 text-right pr-4 select-none"
+                  >
+                    38<br />39<br />40<br />41<br />42<br />43<br />44<br />45<br />46<br />47<br />48<br />49
+                  </div>
+                  <!-- Code Content -->
+                  <div class="flex-1 text-slate-300 whitespace-pre">
+                    <div>import os</div>
+                    <div>import jwt</div>
+                    <div>from flask import request</div>
+                    <div></div>
+                    <div class="code-highlight-red text-white group relative">
+                      SECRET_KEY = "sk_live_51N8f9G2eE2r..."<span
+                        class="absolute right-4 text-[10px] text-danger-red font-bold opacity-0 group-hover:opacity-100 transition-opacity"
+                        >VULNERABILITY DETECTED</span
+                      >
+                    </div>
+                    <div class="code-highlight-red text-white">
+                      ALGORITHM = "HS256"
+                    </div>
+                    <div></div>
+                    <div>def authenticate_user():</div>
+                    <div>
+                      auth_header = request.headers.get('Authorization')
+                    </div>
+                    <div>if not auth_header:</div>
+                    <div>return {"error": "Missing token"}, 401</div>
+                    <div>token = auth_header.split(" ")[1]</div>
+                  </div>
+                </div>
+                <!-- AI Annotation Bubble -->
+                <div
+                  class="absolute left-64 top-40 w-80 bg-panel-dark border border-primary/40 rounded-xl p-4 shadow-2xl ai-bubble-glow z-10"
+                >
+                  <div class="flex items-center gap-2 mb-3">
+                    <div
+                      class="size-6 bg-primary/20 rounded-full flex items-center justify-center"
+                    >
+                      <span
+                        class="material-symbols-outlined text-primary text-sm"
+                        >auto_awesome</span
+                      >
+                    </div>
+                    <span
+                      class="text-xs font-black text-white uppercase tracking-tight"
+                      >AI Audit Insight</span
+                    >
+                  </div>
+                  <p class="text-slate-300 text-xs leading-relaxed mb-4">
+                    <span class="text-danger-red font-bold">Line 42:</span>
+                    Hardcoded production secret detected. This exposes your
+                    Stripe live keys to anyone with repository access.
+                  </p>
+                  <div
+                    class="bg-black/40 rounded-lg p-3 border border-border-dark mb-4"
+                  >
+                    <p
+                      class="text-[10px] text-slate-500 font-bold uppercase mb-2"
+                    >
+                      Suggested Fix
+                    </p>
+                    <code class="text-[11px] text-green-400"
+                      >SECRET_KEY = os.getenv("STRIPE_SECRET")</code
+                    >
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      class="flex-1 bg-primary text-white text-[10px] font-bold py-2 rounded uppercase hover:bg-primary/90 transition-all"
+                    >
+                      Apply Fix
+                    </button>
+                    <button
+                      class="flex-1 border border-border-dark text-slate-400 text-[10px] font-bold py-2 rounded uppercase hover:bg-border-dark transition-all"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <!-- Pointer arrow -->
+                  <div
+                    class="absolute -left-2 top-8 w-4 h-4 bg-panel-dark border-l border-b border-primary/40 rotate-45"
+                  ></div>
+                </div>
+              </div>
+              <!-- Editor Footer -->
+              <div
+                class="h-8 bg-panel-dark border-t border-border-dark px-4 flex items-center justify-between shrink-0"
+              >
+                <div class="flex items-center gap-4">
+                  <div
+                    class="flex items-center gap-1 text-[10px] text-slate-500"
+                  >
+                    <span class="size-2 bg-danger-red rounded-full"></span>
+                    2 Errors
+                  </div>
+                  <div
+                    class="flex items-center gap-1 text-[10px] text-slate-500"
+                  >
+                    <span class="size-2 bg-yellow-500 rounded-full"></span>
+                    0 Warnings
+                  </div>
+                </div>
+                <div class="text-[10px] text-slate-500 font-mono">
+                  Line 42, Col 15 • UTF-8 • LF
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

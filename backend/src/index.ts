@@ -12,6 +12,7 @@ type Bindings = {
   AUDIT_RESULTS: DurableObjectNamespace;
   AUDIT_WORKFLOW: Workflow;
   AI: Ai;
+  GITHUB_TOKEN: string;
 };
 
 // -- Durable Object --
@@ -56,7 +57,7 @@ export class AuditWorkflow extends WorkflowEntrypoint<
     // Step 1: Fetch
     const files: FileContent[] = await step.do("fetch-files", async () => {
       // Now fully typed
-      return await fetchGithubRepo(repoUrl);
+      return await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
     });
 
     // Step 2: Analyze with AI
@@ -86,11 +87,20 @@ export class AuditWorkflow extends WorkflowEntrypoint<
       const messages = [
         {
           role: "system",
-          content: `You are auditing a developer's code. 
-          Identify the language(s) used. 
-          Rate the code quality (Cleanliness, Security, Performance). 
-          Crucial: Explicitly state if this tech stack is 'Cloudflare Native' (JS/TS/Rust/Wasm/Python-Workers) or 'Legacy/Incompatible' (Java/Spring, PHP, .NET). 
-          Provide a concise summary verdict.`,
+          content: `You are an expert code auditor. 
+          Analyze the provided code and return a STRICT JSON object. 
+          DO NOT return Markdown. DO NOT return free text. 
+          
+          Required JSON Schema:
+          {
+            "verdict_score": "string", // e.g. "A+", "B-", "C"
+            "summary": "string", // 2 sentence summary
+            "tech_stack": ["string"], // e.g. ["React", "Workers"]
+            "cloudflare_native": boolean, // true if workers/wrangler detected
+            "security_risks": [
+              { "severity": "critical" | "high" | "medium" | "low", "file": "string", "description": "string" }
+            ]
+          }`,
         },
         {
           role: "user",
@@ -98,14 +108,40 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         },
       ];
 
-      const response = await this.env.AI.run(
+      const response = (await this.env.AI.run(
         "@cf/meta/llama-3.3-70b-instruct" as any,
         {
           messages,
         },
-      );
+      )) as any;
 
-      return response;
+      // Parse the response to ensure it's an object
+      // Llama might wrap it in markdown code blocks despite instructions
+      let responseText = (response as any).response || "";
+
+      // Attempt to clean markdown if present
+      responseText = responseText
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      let parsedAudit;
+      try {
+        parsedAudit = JSON.parse(responseText);
+      } catch (e) {
+        // Fallback if JSON parsing fails
+        parsedAudit = {
+          verdict_score: "F",
+          summary:
+            "Failed to parse AI response. Raw output: " +
+            responseText.substring(0, 100),
+          tech_stack: [],
+          cloudflare_native: false,
+          security_risks: [],
+        };
+      }
+
+      return parsedAudit;
     });
 
     // Step 3: Save to Durable Object
