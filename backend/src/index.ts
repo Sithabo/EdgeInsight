@@ -5,7 +5,7 @@ import {
   WorkflowEvent,
   WorkflowStep,
 } from "cloudflare:workers";
-import { fetchGithubRepo } from "./github-fetcher";
+import { fetchGithubRepo, FileContent } from "./github-fetcher";
 
 // -- Types --
 type Bindings = {
@@ -54,25 +54,48 @@ export class AuditWorkflow extends WorkflowEntrypoint<
     const { repoUrl, auditId } = event.payload;
 
     // Step 1: Fetch
-    const files = await step.do("fetch-files", async () => {
-      // @ts-ignore
+    const files: FileContent[] = await step.do("fetch-files", async () => {
+      // Now fully typed
       return await fetchGithubRepo(repoUrl);
     });
 
     // Step 2: Analyze with AI
     const audit = await step.do("analyze-code", async () => {
-      // Construct Prompt
-      // @ts-ignore
+      // Construct Prompt with truncation
+      // Limit total characters to Avoid context limit issues (rough estimate)
+      const MAX_TOTAL_CHARS = 100000;
+      let currentChars = 0;
+
       const fileContext = files
-        // @ts-ignore
-        .map((f) => `File: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``)
+        .map((f) => {
+          if (currentChars > MAX_TOTAL_CHARS) return "";
+
+          // Truncate individual huge files
+          const MAX_FILE_CHARS = 20000;
+          let content = f.content;
+          if (content.length > MAX_FILE_CHARS) {
+            content = content.substring(0, MAX_FILE_CHARS) + "\n...[TRUNCATED]";
+          }
+
+          currentChars += content.length;
+          return `File: ${f.path}\n\`\`\`\n${content}\n\`\`\``;
+        })
+        .filter((s) => s !== "")
         .join("\n\n");
+
       const messages = [
         {
           role: "system",
-          content: `You are auditing an intern applicant. Identify the language (JS, Go, Rust, Python, etc.). Rate the code quality. Crucial: Explicitly state if this tech stack is 'Cloudflare Native' (JS/Rust/Wasm/Python-Workers) or 'Legacy/Incompatible' (Java/Spring, PHP).`,
+          content: `You are auditing a developer's code. 
+          Identify the language(s) used. 
+          Rate the code quality (Cleanliness, Security, Performance). 
+          Crucial: Explicitly state if this tech stack is 'Cloudflare Native' (JS/TS/Rust/Wasm/Python-Workers) or 'Legacy/Incompatible' (Java/Spring, PHP, .NET). 
+          Provide a concise summary verdict.`,
         },
-        { role: "user", content: `Analyze this repository:\n\n${fileContext}` },
+        {
+          role: "user",
+          content: `Analyze this repository content:\n\n${fileContext}`,
+        },
       ];
 
       const response = await this.env.AI.run(
@@ -82,7 +105,7 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         },
       );
 
-      return response; // simplified
+      return response;
     });
 
     // Step 3: Save to Durable Object
@@ -93,7 +116,6 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         method: "POST",
         body: JSON.stringify({
           repoUrl,
-          // @ts-ignore
           filesFound: files.length,
           audit: audit,
           timestamp: new Date().toISOString(),
