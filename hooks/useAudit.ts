@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { pollAuditStatus, AuditResponse } from "@/lib/api";
+import { pollAudit, AuditResponse } from "@/lib/api";
 
 export function useAudit(auditId: string) {
   const [data, setData] = useState<AuditResponse | null>(null);
@@ -14,7 +14,7 @@ export function useAudit(auditId: string) {
 
     async function checkStatus() {
       try {
-        const result = await pollAuditStatus(auditId);
+        const result = await pollAudit(auditId);
 
         if (!isMounted) return;
 

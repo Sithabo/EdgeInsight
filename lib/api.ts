@@ -16,7 +16,7 @@ export interface AuditResponse {
 
 const API_BASE = "http://localhost:8787"; // Update with actual Worker URL if different
 
-export async function startAudit(
+export async function submitAudit(
   repoUrl: string,
 ): Promise<{ auditId: string; status: string }> {
   try {
@@ -37,7 +37,7 @@ export async function startAudit(
   }
 }
 
-export async function pollAuditStatus(auditId: string): Promise<AuditResponse> {
+export async function pollAudit(auditId: string): Promise<AuditResponse> {
   try {
     const res = await fetch(`${API_BASE}/results/${auditId}`);
 

@@ -3,13 +3,24 @@ export interface FileContent {
   content: string;
 }
 
+// Custom error class to help the Worker identify what went wrong
+export class RepoError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "RepoError";
+  }
+}
+
 export async function fetchGithubRepo(
   url: string,
   token?: string,
 ): Promise<FileContent[]> {
   const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
   if (!match) {
-    throw new Error("Invalid GitHub URL");
+    throw new RepoError(400, "Invalid GitHub URL format");
   }
   const [_, owner, repo] = match;
 
@@ -21,27 +32,36 @@ export async function fetchGithubRepo(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // 1. Fetch the git tree (recursive) to get all files
-  // Using the defaults branch (usually main or master)
-  // To be more robust we could fetch /repos/{owner}/{repo} to get default_branch first
+  // 1. Fetch Repo Info (Check existence/privacy)
   const repoInfoRes = await fetch(
     `https://api.github.com/repos/${owner}/${repo}`,
     { headers },
   );
+
   if (!repoInfoRes.ok) {
-    throw new Error(
-      `Failed to fetch repo info: ${repoInfoRes.status} ${repoInfoRes.statusText}`,
+    if (repoInfoRes.status === 404) {
+      throw new RepoError(
+        404,
+        "Repository not found or Private (Check Token scopes)",
+      );
+    }
+    if (repoInfoRes.status === 401) {
+      throw new RepoError(401, "Bad GitHub Token (Unauthorized)");
+    }
+    throw new RepoError(
+      repoInfoRes.status,
+      `GitHub API Error: ${repoInfoRes.statusText}`,
     );
   }
+
   const repoInfo = await repoInfoRes.json();
   const defaultBranch = (repoInfo as any).default_branch || "main";
 
   const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`;
   const treeRes = await fetch(treeUrl, { headers });
+
   if (!treeRes.ok) {
-    throw new Error(
-      `Failed to fetch repo tree: ${treeRes.status} ${treeRes.statusText}`,
-    );
+    throw new RepoError(treeRes.status, "Failed to fetch file tree");
   }
 
   const treeData = await treeRes.json();

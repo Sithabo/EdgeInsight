@@ -54,40 +54,42 @@ export class AuditWorkflow extends WorkflowEntrypoint<
   async run(event: WorkflowEvent<WorkflowParams>, step: WorkflowStep) {
     const { repoUrl, auditId } = event.payload;
 
-    // Step 1: Fetch
-    const files: FileContent[] = await step.do("fetch-files", async () => {
-      // Now fully typed
-      return await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
-    });
+    try {
+      // Step 1: Fetch
+      const files: FileContent[] = await step.do("fetch-files", async () => {
+        // Now fully typed
+        return await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
+      });
 
-    // Step 2: Analyze with AI
-    const audit = await step.do("analyze-code", async () => {
-      // Construct Prompt with truncation
-      // Limit total characters to Avoid context limit issues (rough estimate)
-      const MAX_TOTAL_CHARS = 100000;
-      let currentChars = 0;
+      // Step 2: Analyze with AI
+      const audit = await step.do("analyze-code", async () => {
+        // Construct Prompt with truncation
+        // Limit total characters to Avoid context limit issues (rough estimate)
+        const MAX_TOTAL_CHARS = 100000;
+        let currentChars = 0;
 
-      const fileContext = files
-        .map((f) => {
-          if (currentChars > MAX_TOTAL_CHARS) return "";
+        const fileContext = files
+          .map((f) => {
+            if (currentChars > MAX_TOTAL_CHARS) return "";
 
-          // Truncate individual huge files
-          const MAX_FILE_CHARS = 20000;
-          let content = f.content;
-          if (content.length > MAX_FILE_CHARS) {
-            content = content.substring(0, MAX_FILE_CHARS) + "\n...[TRUNCATED]";
-          }
+            // Truncate individual huge files
+            const MAX_FILE_CHARS = 20000;
+            let content = f.content;
+            if (content.length > MAX_FILE_CHARS) {
+              content =
+                content.substring(0, MAX_FILE_CHARS) + "\n...[TRUNCATED]";
+            }
 
-          currentChars += content.length;
-          return `File: ${f.path}\n\`\`\`\n${content}\n\`\`\``;
-        })
-        .filter((s) => s !== "")
-        .join("\n\n");
+            currentChars += content.length;
+            return `File: ${f.path}\n\`\`\`\n${content}\n\`\`\``;
+          })
+          .filter((s) => s !== "")
+          .join("\n\n");
 
-      const messages = [
-        {
-          role: "system",
-          content: `You are an expert code auditor. 
+        const messages = [
+          {
+            role: "system",
+            content: `You are an expert code auditor. 
           Analyze the provided code and return a STRICT JSON object. 
           DO NOT return Markdown. DO NOT return free text. 
           
@@ -101,63 +103,83 @@ export class AuditWorkflow extends WorkflowEntrypoint<
               { "severity": "critical" | "high" | "medium" | "low", "file": "string", "description": "string" }
             ]
           }`,
-        },
-        {
-          role: "user",
-          content: `Analyze this repository content:\n\n${fileContext}`,
-        },
-      ];
+          },
+          {
+            role: "user",
+            content: `Analyze this repository content:\n\n${fileContext}`,
+          },
+        ];
 
-      const response = (await this.env.AI.run(
-        "@cf/meta/llama-3.3-70b-instruct" as any,
-        {
-          messages,
-        },
-      )) as any;
+        const response = (await this.env.AI.run(
+          "@cf/meta/llama-3.3-70b-instruct" as any,
+          {
+            messages,
+          },
+        )) as any;
 
-      // Parse the response to ensure it's an object
-      // Llama might wrap it in markdown code blocks despite instructions
-      let responseText = (response as any).response || "";
+        // Parse the response to ensure it's an object
+        // Llama might wrap it in markdown code blocks despite instructions
+        let responseText = (response as any).response || "";
 
-      // Attempt to clean markdown if present
-      responseText = responseText
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
+        // Attempt to clean markdown if present
+        responseText = responseText
+          .replace(/```json/g, "")
+          .replace(/```/g, "")
+          .trim();
 
-      let parsedAudit;
-      try {
-        parsedAudit = JSON.parse(responseText);
-      } catch (e) {
-        // Fallback if JSON parsing fails
-        parsedAudit = {
-          verdict_score: "F",
-          summary:
-            "Failed to parse AI response. Raw output: " +
-            responseText.substring(0, 100),
-          tech_stack: [],
-          cloudflare_native: false,
-          security_risks: [],
-        };
-      }
+        let parsedAudit;
+        try {
+          parsedAudit = JSON.parse(responseText);
+        } catch (e) {
+          // Fallback if JSON parsing fails
+          parsedAudit = {
+            verdict_score: "F",
+            summary:
+              "Failed to parse AI response. Raw output: " +
+              responseText.substring(0, 100),
+            tech_stack: [],
+            cloudflare_native: false,
+            security_risks: [],
+          };
+        }
 
-      return parsedAudit;
-    });
-
-    // Step 3: Save to Durable Object
-    await step.do("save-results", async () => {
-      const id = this.env.AUDIT_RESULTS.idFromString(auditId);
-      const stub = this.env.AUDIT_RESULTS.get(id);
-      await stub.fetch("http://do/save", {
-        method: "POST",
-        body: JSON.stringify({
-          repoUrl,
-          filesFound: files.length,
-          audit: audit,
-          timestamp: new Date().toISOString(),
-        }),
+        return parsedAudit;
       });
-    });
+
+      // Step 3: Save to Durable Object
+      await step.do("save-results", async () => {
+        const id = this.env.AUDIT_RESULTS.idFromString(auditId);
+        const stub = this.env.AUDIT_RESULTS.get(id);
+        await stub.fetch("http://do/save", {
+          method: "POST",
+          body: JSON.stringify({
+            status: "completed",
+            repoUrl,
+            filesFound: files.length,
+            audit: audit,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      });
+    } catch (error: any) {
+      // Global Error Handler
+      await step.do("handle-error", async () => {
+        const id = this.env.AUDIT_RESULTS.idFromString(auditId);
+        const stub = this.env.AUDIT_RESULTS.get(id);
+
+        const errorMessage = error.message || "Unknown Workflow Error";
+
+        await stub.fetch("http://do/save", {
+          method: "POST",
+          body: JSON.stringify({
+            status: "failed",
+            error: errorMessage,
+            repoUrl,
+            timestamp: new Date().toISOString(),
+          }),
+        });
+      });
+    }
   }
 }
 
