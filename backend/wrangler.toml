@@ -10,7 +10,7 @@ class_name = "AuditResults"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["AuditResults"]
+new_sqlite_classes = ["AuditResults"]
 
 # Workers AI
 [ai]
