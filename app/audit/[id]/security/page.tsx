@@ -16,7 +16,7 @@ export default function SecurityDeepDive() {
     return <div className="text-center p-20">Loading analysis...</div>;
   }
 
-  const risks = data.security_risks || [];
+  const risks = data.audit?.security_risks || [];
   const selectedRisk = risks[selectedRiskIndex];
 
   return (

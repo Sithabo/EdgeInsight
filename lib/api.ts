@@ -1,18 +1,22 @@
-export interface AuditResponse {
-  auditId: string;
-  status: "queued" | "completed" | "failed";
-  repoUrl: string;
-  error?: string;
-  // Included when completed
-  verdict_score?: string;
-  summary?: string;
-  tech_stack?: string[];
-  cloudflare_native?: boolean;
-  security_risks?: Array<{
+export interface AuditDetails {
+  verdict_score: string;
+  summary: string;
+  tech_stack: string[];
+  cloudflare_native: boolean;
+  security_risks: Array<{
     severity: "critical" | "high" | "medium" | "low";
     file: string;
     description: string;
   }>;
+}
+
+export interface AuditResponse {
+  auditId?: string;
+  status: "queued" | "processing" | "completed" | "failed";
+  repoUrl: string;
+  error?: string;
+  filesFound?: number;
+  audit?: AuditDetails;
 }
 
 const API_BASE = "http://localhost:8787"; // Update with actual Worker URL if different
