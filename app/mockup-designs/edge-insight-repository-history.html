@@ -1,0 +1,430 @@
+<!doctype html>
+
+<html class="dark" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>EdgeInsight Repository History</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#f48225",
+              "background-light": "#f8f7f5",
+              "background-dark": "#1a1a1a",
+              "industrial-dark": "#111111",
+              "row-hover": "#221810",
+            },
+            fontFamily: {
+              display: ["Space Grotesk", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+        vertical-align: middle;
+      }
+      .audit-row:hover {
+        box-shadow: inset 0 0 10px rgba(244, 130, 37, 0.1);
+        border-left: 2px solid #f48225;
+      }
+      .grade-badge-a {
+        background: rgba(34, 197, 94, 0.1);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
+      }
+      .grade-badge-b {
+        background: rgba(244, 130, 37, 0.1);
+        color: #f48225;
+        border: 1px solid rgba(244, 130, 37, 0.2);
+        box-shadow: 0 0 8px rgba(244, 130, 37, 0.2);
+      }
+      .risk-critical {
+        color: #ff4d4d;
+        text-shadow: 0 0 5px rgba(255, 77, 77, 0.3);
+      }
+    </style>
+  </head>
+  <body
+    class="bg-background-light dark:bg-background-dark font-display text-white antialiased"
+  >
+    <div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+      <!-- Top Navigation Bar -->
+      <header
+        class="flex items-center justify-between whitespace-nowrap border-b border-white/10 bg-industrial-dark px-10 py-4"
+      >
+        <div class="flex items-center gap-8">
+          <div class="flex items-center gap-3 text-white">
+            <div class="size-6 text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined text-3xl">terminal</span>
+            </div>
+            <h2
+              class="text-white text-xl font-bold leading-tight tracking-tight"
+            >
+              EdgeInsight
+            </h2>
+          </div>
+          <label class="flex flex-col min-w-64 h-10">
+            <div
+              class="flex w-full flex-1 items-stretch rounded-lg h-full bg-white/5 border border-white/10 focus-within:border-primary/50 transition-colors"
+            >
+              <div class="text-white/40 flex items-center justify-center pl-4">
+                <span class="material-symbols-outlined text-xl">search</span>
+              </div>
+              <input
+                class="form-input flex w-full flex-1 border-none bg-transparent text-white focus:ring-0 placeholder:text-white/30 px-3 text-sm font-normal"
+                placeholder="Search repositories..."
+                value=""
+              />
+            </div>
+          </label>
+        </div>
+        <div class="flex flex-1 justify-end gap-6 items-center">
+          <div class="flex gap-3">
+            <button
+              class="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white transition-all"
+            >
+              <span class="material-symbols-outlined text-xl"
+                >notifications</span
+              >
+            </button>
+            <button
+              class="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white transition-all"
+            >
+              <span class="material-symbols-outlined text-xl">settings</span>
+            </button>
+          </div>
+          <div
+            class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-primary/50"
+            data-alt="User avatar profile picture"
+            style="
+              background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuBcA6wzi7jYJi1G4rV7C4fYGUiyEBoEPA2M2-RfISq_I_jFyZ6AW5HlPYYTZslUeQub0QG5YL-1Zy_GkbulXbehiWV49uXTGyBcQxIFKxECzG3IWhKca4nCLbAGL9Bx5dQU9najM2vBfJSPlX4vjg8Ow4rnHXXYpWZf0Os00aE4dIdeTj0x4EK-OcE78eWUHTanIpalsaIf4kJpj_grVNqz8u5ylAWmoDalaN6rb17C7eVmN4sx1H5OLWIFlfFTyTFcNwU_iYa1oRGt&quot;);
+            "
+          ></div>
+        </div>
+      </header>
+      <main class="flex-1 flex justify-center py-10 px-6">
+        <div class="flex flex-col w-full max-w-[1200px] gap-6">
+          <!-- Page Heading -->
+          <div class="flex flex-wrap items-center justify-between gap-4 px-2">
+            <div class="flex flex-col gap-1">
+              <h1
+                class="text-white text-4xl font-black leading-tight tracking-tight"
+              >
+                Recent Audits
+              </h1>
+              <p class="text-white/50 text-sm">
+                Reviewing your latest technical talent deep-dives
+              </p>
+            </div>
+            <button
+              class="flex min-w-[120px] cursor-pointer items-center justify-center gap-2 rounded-lg h-11 px-6 bg-primary hover:bg-primary/90 text-white text-sm font-bold transition-all shadow-lg shadow-primary/20"
+            >
+              <span class="material-symbols-outlined text-xl">add_circle</span>
+              <span class="truncate">New Audit</span>
+            </button>
+          </div>
+          <!-- Main Table Section -->
+          <div class="w-full @container">
+            <div
+              class="overflow-hidden rounded-xl bg-industrial-dark/50 border border-white/5 backdrop-blur-sm"
+            >
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-white/5 border-b border-white/10">
+                    <th
+                      class="px-6 py-4 text-white/60 text-xs font-bold uppercase tracking-wider"
+                    >
+                      Repo
+                    </th>
+                    <th
+                      class="px-6 py-4 text-white/60 text-xs font-bold uppercase tracking-wider w-32 text-center"
+                    >
+                      Verdict
+                    </th>
+                    <th
+                      class="px-6 py-4 text-white/60 text-xs font-bold uppercase tracking-wider"
+                    >
+                      Date
+                    </th>
+                    <th
+                      class="px-6 py-4 text-white/60 text-xs font-bold uppercase tracking-wider"
+                    >
+                      Risks
+                    </th>
+                    <th
+                      class="px-6 py-4 text-right text-white/60 text-xs font-bold uppercase tracking-wider"
+                    >
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                  <!-- Row 1 -->
+                  <tr
+                    class="audit-row group transition-all duration-200 hover:bg-row-hover/40"
+                  >
+                    <td class="px-6 py-5">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="material-symbols-outlined text-white/40 group-hover:text-primary transition-colors"
+                          >code</span
+                        >
+                        <span class="text-white font-medium"
+                          >j-doe/portfolio</span
+                        >
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 text-center">
+                      <span
+                        class="grade-badge-a inline-flex items-center justify-center size-8 rounded-lg font-bold text-sm"
+                        >A</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-white/50 text-sm">2 hours ago</td>
+                    <td class="px-6 py-5">
+                      <span class="text-white/80 text-sm font-medium"
+                        >0 Critical</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-right">
+                      <a
+                        class="text-primary hover:text-primary/80 font-bold text-sm tracking-wide transition-colors uppercase"
+                        href="#"
+                        >View Report</a
+                      >
+                    </td>
+                  </tr>
+                  <!-- Row 2 -->
+                  <tr
+                    class="audit-row group transition-all duration-200 hover:bg-row-hover/40 bg-white/[0.02]"
+                  >
+                    <td class="px-6 py-5">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="material-symbols-outlined text-white/40 group-hover:text-primary transition-colors"
+                          >database</span
+                        >
+                        <span class="text-white font-medium"
+                          >alpha-dev/core-api</span
+                        >
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 text-center">
+                      <span
+                        class="grade-badge-b inline-flex items-center justify-center px-2 h-8 min-w-[32px] rounded-lg font-bold text-sm"
+                        >B-</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-white/50 text-sm">5 hours ago</td>
+                    <td class="px-6 py-5">
+                      <span class="text-white/80 text-sm font-medium"
+                        >1 Major</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-right">
+                      <a
+                        class="text-primary hover:text-primary/80 font-bold text-sm tracking-wide transition-colors uppercase"
+                        href="#"
+                        >View Report</a
+                      >
+                    </td>
+                  </tr>
+                  <!-- Row 3 -->
+                  <tr
+                    class="audit-row group transition-all duration-200 hover:bg-row-hover/40"
+                  >
+                    <td class="px-6 py-5">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="material-symbols-outlined text-white/40 group-hover:text-primary transition-colors"
+                          >settings_ethernet</span
+                        >
+                        <span class="text-white font-medium"
+                          >tech-lead/utils</span
+                        >
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 text-center">
+                      <span
+                        class="inline-flex items-center justify-center size-8 rounded-lg bg-white/10 border border-white/20 text-white/70 font-bold text-sm"
+                        >C</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-white/50 text-sm">1 day ago</td>
+                    <td class="px-6 py-5">
+                      <span
+                        class="risk-critical text-sm font-bold uppercase tracking-tight"
+                        >2 Critical</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-right">
+                      <a
+                        class="text-primary hover:text-primary/80 font-bold text-sm tracking-wide transition-colors uppercase"
+                        href="#"
+                        >View Report</a
+                      >
+                    </td>
+                  </tr>
+                  <!-- Row 4 -->
+                  <tr
+                    class="audit-row group transition-all duration-200 hover:bg-row-hover/40 bg-white/[0.02]"
+                  >
+                    <td class="px-6 py-5">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="material-symbols-outlined text-white/40 group-hover:text-primary transition-colors"
+                          >biotech</span
+                        >
+                        <span class="text-white font-medium"
+                          >user99/sandbox</span
+                        >
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 text-center">
+                      <span
+                        class="grade-badge-a inline-flex items-center justify-center size-8 rounded-lg font-bold text-sm"
+                        >A</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-white/50 text-sm">3 days ago</td>
+                    <td class="px-6 py-5">
+                      <span class="text-white/80 text-sm font-medium"
+                        >0 Critical</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-right">
+                      <a
+                        class="text-primary hover:text-primary/80 font-bold text-sm tracking-wide transition-colors uppercase"
+                        href="#"
+                        >View Report</a
+                      >
+                    </td>
+                  </tr>
+                  <!-- Row 5 -->
+                  <tr
+                    class="audit-row group transition-all duration-200 hover:bg-row-hover/40"
+                  >
+                    <td class="px-6 py-5">
+                      <div class="flex items-center gap-3">
+                        <span
+                          class="material-symbols-outlined text-white/40 group-hover:text-primary transition-colors"
+                          >rocket_launch</span
+                        >
+                        <span class="text-white font-medium"
+                          >gh-expert/engine</span
+                        >
+                      </div>
+                    </td>
+                    <td class="px-6 py-5 text-center">
+                      <span
+                        class="grade-badge-b inline-flex items-center justify-center px-2 h-8 min-w-[32px] rounded-lg font-bold text-sm"
+                        >B+</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-white/50 text-sm">4 days ago</td>
+                    <td class="px-6 py-5">
+                      <span class="text-white/80 text-sm font-medium"
+                        >0 Critical</span
+                      >
+                    </td>
+                    <td class="px-6 py-5 text-right">
+                      <a
+                        class="text-primary hover:text-primary/80 font-bold text-sm tracking-wide transition-colors uppercase"
+                        href="#"
+                        >View Report</a
+                      >
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Pagination Section -->
+          <div
+            class="flex items-center justify-between p-4 border-t border-white/5 mt-4"
+          >
+            <p class="text-white/40 text-sm">
+              Showing 1-5 of 48 repository audits
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                class="flex size-10 items-center justify-center rounded-lg bg-white/5 text-white/40 hover:text-white transition-colors"
+              >
+                <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              <button
+                class="flex size-10 items-center justify-center rounded-lg bg-primary text-white text-sm font-bold"
+              >
+                1
+              </button>
+              <button
+                class="flex size-10 items-center justify-center rounded-lg bg-white/5 text-white text-sm hover:bg-white/10 transition-colors"
+              >
+                2
+              </button>
+              <button
+                class="flex size-10 items-center justify-center rounded-lg bg-white/5 text-white text-sm hover:bg-white/10 transition-colors"
+              >
+                3
+              </button>
+              <button
+                class="flex size-10 items-center justify-center rounded-lg bg-white/5 text-white/40 hover:text-white transition-colors"
+              >
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+      <!-- Status Bar -->
+      <footer
+        class="bg-industrial-dark border-t border-white/5 px-10 py-3 flex justify-between items-center"
+      >
+        <div
+          class="flex items-center gap-4 text-xs text-white/40 uppercase tracking-widest"
+        >
+          <span class="flex items-center gap-1.5">
+            <span
+              class="size-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+            ></span>
+            System Online
+          </span>
+          <span>API Latency: 42ms</span>
+        </div>
+        <div class="text-xs text-white/20 font-medium">
+          EDGEINSIGHT v2.4.0-STABLE
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
