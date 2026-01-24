@@ -112,7 +112,7 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         const messages = [
           {
             role: "system",
-            content: `You are an expert code auditor. 
+            content: `You are a Senior Principal Engineer auditing a codebase.
           Analyze the provided code and return a STRICT JSON object. 
           
           Required JSON Schema:
@@ -127,11 +127,12 @@ export class AuditWorkflow extends WorkflowEntrypoint<
           }
           
           Constraints:
-          - Summary: Strict limit of 50 words.
-          - Security Risks: Return exactly 3 most critical risks.
+          - Summary: Write 2-3 professional sentences (approx 60-80 words). First, describe the architecture and key frameworks used. Second, provide a high-level assessment of the security posture, synthesizing the risks found below.
+          - Security Risks: Return exactly 3 most relevant risks (prioritize Critical/High).
           - Snippet: Limit to 10 lines. MUST ESCAPE ALL DOUBLE QUOTES inside the snippet (e.g. \"var x = \\\"y\\\";\").
+          - Verdict Score: MUST be a Letter Grade (A+, A, A-, B+, B, B-, C, D, F). 'F' if critical secrets are hardcoded.
 
-          Do NOT use Markdown formatting. Do NOT output code blocks. Return ONLY the raw JSON string.`,
+          Do NOT use Markdown formatting. Return ONLY the raw JSON string.`,
           },
           {
             role: "user",
