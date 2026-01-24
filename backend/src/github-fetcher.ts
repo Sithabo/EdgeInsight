@@ -119,8 +119,13 @@ export async function fetchGithubRepo(
   const results: FileContent[] = [];
 
   // Batch requests to avoid hitting rate limits too hard or overwhelming the runtime
+  let totalSize = 0;
+  const MAX_TOTAL_SIZE = 2 * 1024 * 1024; // 2MB Limit (Safe for AI context)
+
   const BATCH_SIZE = 5;
   for (let i = 0; i < limitedFiles.length; i += BATCH_SIZE) {
+    if (totalSize >= MAX_TOTAL_SIZE) break; // [HARDEN] Stop fetching if we have enough
+
     const batch = limitedFiles.slice(i, i + BATCH_SIZE);
     const promises = batch.map(async (node) => {
       const blobRes = await fetch(node.url, { headers });
@@ -133,7 +138,10 @@ export async function fetchGithubRepo(
 
     const batchResults = await Promise.all(promises);
     batchResults.forEach((r) => {
-      if (r) results.push(r);
+      if (r) {
+        results.push(r);
+        totalSize += r.content.length;
+      }
     });
   }
 

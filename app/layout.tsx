@@ -18,9 +18,24 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "EdgeInsight - AI-Powered GitHub Audits",
+  title: "EdgeInsight - AI Code Audit",
   description:
-    "Instant architectural analysis and technical depth assessment for recruiting teams.",
+    "Analyze GitHub repositories instantly with Cloudflare Workers AI.",
+  openGraph: {
+    title: "EdgeInsight - AI Code Audit",
+    description: "Instant architectural analysis for engineering teams.",
+    url: "https://edge-insight.pages.dev",
+    siteName: "EdgeInsight",
+    images: [
+      {
+        url: "https://placehold.co/1200x630/1a1a1a/f37f20/png?text=EdgeInsight+AI",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

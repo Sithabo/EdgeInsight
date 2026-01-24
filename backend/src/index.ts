@@ -55,80 +55,83 @@ export class AuditWorkflow extends WorkflowEntrypoint<
     const { repoUrl, auditId } = event.payload;
 
     try {
-      // Step 1: Fetch
-      // Step 1: Fetch
-      const fetchResult = await step.do("fetch-files", async () => {
+      // [BULLETPROOF FIX]
+      // We merge "Fetch" and "Analyze" into ONE step.
+      // This ensures the massive 'files' array is kept in RAM and never
+      // saved to the Workflow's SQLite database (which causes the crash).
+      const auditResult = await step.do("perform-audit", async () => {
+        // --- 1. FETCH (In Memory) ---
+        let files;
         try {
-          const f = await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
-          return { success: true, files: f };
+          files = await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
         } catch (e: any) {
-          return { success: false, error: e.message || "Failed to fetch repo" };
+          // If fetch fails, we throw to trigger the global error handler
+          throw new Error(`Fetch Failed: ${e.message}`);
         }
-      });
 
-      if (!fetchResult.success || !fetchResult.files) {
-        await step.do("save-failed-fetch", async () => {
-          const id = this.env.AUDIT_RESULTS.idFromString(auditId);
-          const stub = this.env.AUDIT_RESULTS.get(id);
-          await stub.fetch("http://do/save", {
-            method: "POST",
-            body: JSON.stringify({
-              status: "failed",
-              error:
-                fetchResult.error ||
-                "Failed to access repository (Private or 404)",
-              repoUrl,
-              timestamp: new Date().toISOString(),
-            }),
-          });
+        if (!files || files.length === 0) {
+          throw new Error("No files found in repository");
+        }
+
+        // --- 2. UPDATE STATUS (Fire & Forget) ---
+        // We manually fire this to the DO so the frontend shows "Processing"
+        const id = this.env.AUDIT_RESULTS.idFromString(auditId);
+        const stub = this.env.AUDIT_RESULTS.get(id);
+        stub.fetch("http://do/save", {
+          method: "POST",
+          body: JSON.stringify({
+            status: "processing",
+            repoUrl,
+            stage: "AI_ANALYSIS_STARTED",
+            filesFound: files.length,
+            timestamp: new Date().toISOString(),
+          }),
         });
-        return;
-      }
 
-      const files = fetchResult.files;
-
-      // Step 2: Analyze with AI
-      const audit = await step.do("analyze-code", async () => {
-        // Construct Prompt with truncation
-        // Limit total characters to Avoid context limit issues (rough estimate)
-        const MAX_TOTAL_CHARS = 100000;
+        // --- 3. PREPARE AI CONTEXT ---
+        // Strict truncation to prevent Context Window overflow
+        const MAX_TOTAL_CHARS = 90000; // Safe buffer for Llama 3
         let currentChars = 0;
 
         const fileContext = files
           .map((f) => {
             if (currentChars > MAX_TOTAL_CHARS) return "";
-
-            // Truncate individual huge files
-            const MAX_FILE_CHARS = 20000;
+            const MAX_FILE_CHARS = 15000;
             let content = f.content;
             if (content.length > MAX_FILE_CHARS) {
               content =
                 content.substring(0, MAX_FILE_CHARS) + "\n...[TRUNCATED]";
             }
-
             currentChars += content.length;
             return `File: ${f.path}\n\`\`\`\n${content}\n\`\`\``;
           })
           .filter((s) => s !== "")
           .join("\n\n");
 
+        // --- 4. RUN AI ---
         const messages = [
           {
             role: "system",
             content: `You are an expert code auditor. 
           Analyze the provided code and return a STRICT JSON object. 
-          DO NOT return Markdown. DO NOT return free text. 
           
           Required JSON Schema:
           {
-            "verdict_score": "string", // e.g. "A+", "B-", "C"
-            "summary": "string", // 2 sentence summary
-            "tech_stack": ["string"], // e.g. ["React", "Workers"]
-            "cloudflare_native": boolean, // true if workers/wrangler detected
+            "verdict_score": "string", 
+            "summary": "string", 
+            "tech_stack": ["string"],
+            "cloudflare_native": boolean,
             "security_risks": [
-              { "severity": "critical" | "high" | "medium" | "low", "file": "string", "description": "string" }
+              { "severity": "critical" | "high" | "medium", "file": "string", "description": "string", "snippet": "string" }
             ]
-          }`,
+          }
+          
+          Constraints:
+          - Summary: Strict limit of 50 words.
+          - Security Risks: Return exactly 3 most critical risks.
+          - Snippet: Limit to 10 lines. MUST ESCAPE ALL DOUBLE QUOTES inside the snippet (e.g. \"var x = \\\"y\\\";\").
+
+          Do NOT use Markdown formatting. Do NOT output code blocks. Return ONLY the raw JSON string.`,
           },
           {
             role: "user",
@@ -138,68 +141,80 @@ export class AuditWorkflow extends WorkflowEntrypoint<
 
         const response = (await this.env.AI.run(
           "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as any,
-          {
-            messages,
-          },
+          { messages, max_tokens: 2048 },
         )) as any;
 
-        // Parse the response to ensure it's an object
-        // Llama might wrap it in markdown code blocks despite instructions
-        let responseText = (response as any).response || "";
+        // --- 5. PARSE & RETURN ---
+        let rawOutput = (response as any).response;
 
-        // Attempt to clean markdown if present
-        responseText = responseText
-          .replace(/```json/g, "")
-          .replace(/```/g, "")
-          .trim();
-
-        let parsedAudit;
-        try {
-          parsedAudit = JSON.parse(responseText);
-        } catch (e) {
-          // Fallback if JSON parsing fails
-          parsedAudit = {
-            verdict_score: "F",
-            summary:
-              "Failed to parse AI response. Raw output: " +
-              responseText.substring(0, 100),
-            tech_stack: [],
-            cloudflare_native: false,
-            security_risks: [],
-          };
+        // 1. Handle Case: AI returns an Object directly
+        if (typeof rawOutput === "object" && rawOutput !== null) {
+          return { audit: rawOutput, filesFound: files.length };
         }
 
-        return parsedAudit;
+        // 2. Handle Case: AI returns a String
+        let responseText = String(rawOutput || "");
+
+        // Strip Markdown
+        responseText = responseText.replace(/```json/g, "").replace(/```/g, "");
+
+        // Isolate JSON object
+        const jsonStart = responseText.indexOf("{");
+        const jsonEnd = responseText.lastIndexOf("}");
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+          responseText = responseText.substring(jsonStart, jsonEnd + 1);
+        }
+
+        try {
+          const parsed = JSON.parse(responseText);
+          return { audit: parsed, filesFound: files.length };
+        } catch (e) {
+          console.error("JSON Parse Failed:", e);
+          // Fallback: Return a valid "Error Report" so the UI doesn't crash
+          return {
+            audit: {
+              verdict_score: "?",
+              summary: "AI returned invalid JSON. Please try again.",
+              tech_stack: [],
+              cloudflare_native: false,
+              security_risks: [],
+            },
+            filesFound: files.length,
+          };
+        }
       });
 
-      // Step 3: Save to Durable Object
+      // Step 2: Save Results (Only saves the small JSON, not the files)
       await step.do("save-results", async () => {
         const id = this.env.AUDIT_RESULTS.idFromString(auditId);
         const stub = this.env.AUDIT_RESULTS.get(id);
+
+        const { audit, filesFound } = auditResult;
+
         await stub.fetch("http://do/save", {
           method: "POST",
           body: JSON.stringify({
             status: "completed",
             repoUrl,
-            filesFound: files.length,
-            audit: audit,
+            audit,
+            filesFound, // <--- CRITICAL: Save this again
             timestamp: new Date().toISOString(),
           }),
         });
       });
     } catch (error: any) {
-      // Global Error Handler
+      // Step 3: Global Error Handler
       await step.do("handle-error", async () => {
         const id = this.env.AUDIT_RESULTS.idFromString(auditId);
         const stub = this.env.AUDIT_RESULTS.get(id);
 
-        const errorMessage = error.message || "Unknown Workflow Error";
+        console.error("Workflow Failed:", error);
 
         await stub.fetch("http://do/save", {
           method: "POST",
           body: JSON.stringify({
             status: "failed",
-            error: errorMessage,
+            error: error.message || "Unknown Workflow Error",
             repoUrl,
             timestamp: new Date().toISOString(),
           }),

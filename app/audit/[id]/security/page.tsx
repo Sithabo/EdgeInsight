@@ -3,6 +3,8 @@
 export const runtime = "edge";
 
 import { useState } from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { useAudit } from "@/hooks/useAudit";
@@ -106,17 +108,45 @@ export default function SecurityDeepDive() {
                     {selectedRisk.file}
                   </div>
                 </div>
-                <div className="flex-1 p-6 overflow-y-auto font-mono text-sm text-slate-300 leading-relaxed bg-[#0d1117]">
-                  <div className="bg-red-500/5 border border-red-500/20 p-4 rounded-lg mb-6 text-red-200">
-                    <strong>Identified Risk:</strong> {selectedRisk.description}
+                <div className="flex-1 overflow-y-auto font-mono text-sm leading-relaxed bg-[#0d1117] relative">
+                  <div className="bg-red-500/10 border-b border-red-500/20 p-4 mb-0">
+                    <strong className="text-red-400 text-xs uppercase tracking-wider">
+                      Vulnerability Detected:
+                    </strong>
+                    <p className="text-slate-300 text-sm mt-1">
+                      {selectedRisk.description}
+                    </p>
                   </div>
-                  <p className="text-slate-500">
-                    // Code preview is not available in this demo mode.
-                  </p>
-                  <p className="text-slate-500">
-                    // Imagine critical code snippets here highlighting the
-                    vulnerability.
-                  </p>
+
+                  {selectedRisk.snippet ? (
+                    <div className="syntax-highlighter-wrapper">
+                      <SyntaxHighlighter
+                        language="typescript" // You can make this dynamic based on file extension if you want
+                        style={vscDarkPlus}
+                        customStyle={{
+                          margin: 0,
+                          padding: "1.5rem",
+                          background: "transparent",
+                          fontSize: "14px",
+                        }}
+                        showLineNumbers={true}
+                        wrapLines={true}
+                        lineProps={(lineNumber) => {
+                          // Optional: Highlight specific lines if the AI gives us line numbers in the future
+                          return { style: { display: "block" } };
+                        }}
+                      >
+                        {selectedRisk.snippet}
+                      </SyntaxHighlighter>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-12 text-slate-500 italic gap-4">
+                      <span className="material-symbols-outlined text-4xl opacity-50">
+                        code_off
+                      </span>
+                      <span>Snippet not provided by AI engine.</span>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (

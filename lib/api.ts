@@ -7,6 +7,7 @@ export interface AuditDetails {
     severity: "critical" | "high" | "medium" | "low";
     file: string;
     description: string;
+    snippet?: string;
   }>;
 }
 
