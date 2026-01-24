@@ -90,18 +90,19 @@ export class AuditWorkflow extends WorkflowEntrypoint<
 
         // --- 3. PREPARE AI CONTEXT ---
         // Strict truncation to prevent Context Window overflow
-        const MAX_TOTAL_CHARS = 90000; // Safe buffer for Llama 3
+        const MAX_TOTAL_CHARS = 24000; // Safe buffer for Llama 3
         let currentChars = 0;
 
         const fileContext = files
           .map((f) => {
             if (currentChars > MAX_TOTAL_CHARS) return "";
-            const MAX_FILE_CHARS = 15000;
+            const MAX_FILE_CHARS = 6000;
             let content = f.content;
             if (content.length > MAX_FILE_CHARS) {
               content =
                 content.substring(0, MAX_FILE_CHARS) + "\n...[TRUNCATED]";
             }
+            MAX_FILE_CHARS;
             currentChars += content.length;
             return `File: ${f.path}\n\`\`\`\n${content}\n\`\`\``;
           })
@@ -141,7 +142,7 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         ];
 
         const response = (await this.env.AI.run(
-          "@cf/meta/llama-3.3-70b-instruct-fp8-fast" as any,
+          "@cf/meta/llama-3.1-8b-instruct" as any,
           { messages, max_tokens: 2048 },
         )) as any;
 
