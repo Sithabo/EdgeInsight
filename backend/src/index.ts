@@ -61,12 +61,25 @@ export class AuditWorkflow extends WorkflowEntrypoint<
       // saved to the Workflow's SQLite database (which causes the crash).
       const auditResult = await step.do("perform-audit", async () => {
         // --- 1. FETCH (In Memory) ---
+        // Notify: Fetching
+        {
+          const id = this.env.AUDIT_RESULTS.idFromString(auditId);
+          const stub = this.env.AUDIT_RESULTS.get(id);
+          stub.fetch("http://do/save", {
+            method: "POST",
+            body: JSON.stringify({
+              status: "processing",
+              repoUrl,
+              stage: "FETCHING_REPO", // <--- NEW STAGE
+              timestamp: new Date().toISOString(),
+            }),
+          });
+        }
+
         let files;
         try {
           files = await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
         } catch (e: any) {
-          // [FIX] Do NOT throw here, or the Workflow will retry indefinitely.
-          // Return an error object so we can handle it gracefully in the next step.
           return { error: e.message || "Fetch Failed", filesFound: 0 };
         }
 
@@ -75,7 +88,6 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         }
 
         // --- 2. UPDATE STATUS (Fire & Forget) ---
-        // We manually fire this to the DO so the frontend shows "Processing"
         const id = this.env.AUDIT_RESULTS.idFromString(auditId);
         const stub = this.env.AUDIT_RESULTS.get(id);
         stub.fetch("http://do/save", {
@@ -90,8 +102,23 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         });
 
         // --- 3. PREPARE AI CONTEXT ---
-        // Strict truncation to prevent Context Window overflow
-        const MAX_TOTAL_CHARS = 24000; // Safe buffer for Llama 3
+         // Notify: Analyzing
+         {
+          const id = this.env.AUDIT_RESULTS.idFromString(auditId);
+          const stub = this.env.AUDIT_RESULTS.get(id);
+          stub.fetch("http://do/save", {
+            method: "POST",
+            body: JSON.stringify({
+              status: "processing",
+              repoUrl,
+              stage: "ANALYZING_CODE", // <--- NEW STAGE
+              filesFound: files.length,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+        }
+
+        const MAX_TOTAL_CHARS = 16000; // Reduced from 24000 to safe-guard 8k context limit
         let currentChars = 0;
 
         const fileContext = files
@@ -103,15 +130,17 @@ export class AuditWorkflow extends WorkflowEntrypoint<
               content =
                 content.substring(0, MAX_FILE_CHARS) + "\n...[TRUNCATED]";
             }
-            MAX_FILE_CHARS;
             currentChars += content.length;
             return `File: ${f.path}\n\`\`\`\n${content}\n\`\`\``;
           })
           .filter((s) => s !== "")
           .join("\n\n");
 
-        // --- 4. RUN AI ---
-        const messages = [
+        // --- 4. RUN AI (WITH RETRY & SELF-CORRECTION) ---
+        let attempts = 0;
+        const MAX_ATTEMPTS = 3;
+        let lastError = "";
+        let messages = [
           {
             role: "system",
             content: `You are a Senior Principal Engineer auditing a codebase.
@@ -129,14 +158,13 @@ export class AuditWorkflow extends WorkflowEntrypoint<
           }
           
           Constraints:
-          - Summary: Write 2-3 professional sentences (approx 60-80 words). First, describe the architecture and key frameworks used. Second, provide a high-level assessment of the security posture, synthesizing the risks found below.
-          - Security Risks: Return exactly 3 most relevant risks (prioritize Critical/High).
-          - Snippet: Limit to 10 lines. MUST ESCAPE ALL DOUBLE QUOTES inside the snippet (e.g. \"var x = \\\"y\\\";\").
-          - Verdict Score: MUST be a Letter Grade (A+, A, A-, B+, B, B-, C, D, F). 'F' if critical secrets are hardcoded.
+          - Summary: Write 2-3 professional sentences.
+          - Security Risks: Return exactly 3 most relevant risks.
+          - Snippet: Limit to 10 lines. MUST ESCAPE ALL DOUBLE QUOTES inside the JSON string values.
+          - Verdict Score: MUST be a Letter Grade (A+, A, ... F).
           - Line Number: The exact line number in the source file where the snippet begins.
           
-
-          Do NOT use Markdown formatting. Return ONLY the raw JSON string.`,
+          CRITICAL: Return ONLY the raw JSON string. Do not use Markdown formatting. Ensure valid JSON syntax (no trailing commas, properly escaped quotes).`,
           },
           {
             role: "user",
@@ -144,55 +172,83 @@ export class AuditWorkflow extends WorkflowEntrypoint<
           },
         ];
 
-        const response = (await this.env.AI.run(
-          "@cf/meta/llama-3.1-8b-instruct" as any,
-          { messages, max_tokens: 2048 },
-        )) as any;
+        while (attempts < MAX_ATTEMPTS) {
+          attempts++;
+          try {
+            console.log(`AI Attempt ${attempts}/${MAX_ATTEMPTS}`);
+            
+            const response = (await this.env.AI.run(
+              "@cf/meta/llama-3.1-8b-instruct" as any,
+              { messages, max_tokens: 2048 },
+            )) as any;
 
-        // --- 5. PARSE & RETURN ---
-        let rawOutput = (response as any).response;
+            let rawOutput = (response as any).response;
 
-        // 1. Handle Case: AI returns an Object directly
-        if (typeof rawOutput === "object" && rawOutput !== null) {
-          return { audit: rawOutput, filesFound: files.length };
+            // Handle Object return
+            if (typeof rawOutput === "object" && rawOutput !== null) {
+              return { audit: rawOutput, filesFound: files.length };
+            }
+
+            // Handle String return
+            let responseText = String(rawOutput || "");
+            const originalResponse = responseText;
+
+            // Clean Markdown
+            responseText = responseText.replace(/```json/g, "").replace(/```/g, "");
+            
+            // Extract JSON
+            const jsonStart = responseText.indexOf("{");
+            const jsonEnd = responseText.lastIndexOf("}");
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+              responseText = responseText.substring(jsonStart, jsonEnd + 1);
+            }
+
+            const parsed = JSON.parse(responseText);
+            return { audit: parsed, filesFound: files.length };
+            
+          } catch (e: any) {
+            console.error(`Attempt ${attempts} Failed:`, e);
+            lastError = e.message;
+
+            // Add error to context for next attempt
+            messages.push({
+               role: "user",
+               content: `Your previous response was invalid JSON. Error: ${lastError}.
+               
+               Please fix the JSON and return ONLY the valid JSON object. Ensure all strings are properly escaped.`
+            });
+          }
         }
 
-        // 2. Handle Case: AI returns a String
-        let responseText = String(rawOutput || "");
-
-        // Strip Markdown
-        responseText = responseText.replace(/```json/g, "").replace(/```/g, "");
-
-        // Isolate JSON object
-        const jsonStart = responseText.indexOf("{");
-        const jsonEnd = responseText.lastIndexOf("}");
-        if (jsonStart !== -1 && jsonEnd !== -1) {
-          responseText = responseText.substring(jsonStart, jsonEnd + 1);
-        }
-
-        try {
-          const parsed = JSON.parse(responseText);
-          return { audit: parsed, filesFound: files.length };
-        } catch (e) {
-          console.error("JSON Parse Failed:", e);
-          // Fallback: Return a valid "Error Report" so the UI doesn't crash
-          return {
+        // Fallback after all retries failed
+        return {
             audit: {
               verdict_score: "?",
-              summary: "AI returned invalid JSON. Please try again.",
+              summary: "AI Failed to generate valid JSON after multiple attempts.",
               tech_stack: [],
               cloudflare_native: false,
               security_risks: [],
             },
             filesFound: files.length,
           };
-        }
       });
 
       // Step 2: Save Results (Only saves the small JSON, not the files)
       await step.do("save-results", async () => {
-        const id = this.env.AUDIT_RESULTS.idFromString(auditId);
-        const stub = this.env.AUDIT_RESULTS.get(id);
+         // Notify: Generating Report
+         const id = this.env.AUDIT_RESULTS.idFromString(auditId);
+         const stub = this.env.AUDIT_RESULTS.get(id);
+
+         await stub.fetch("http://do/save", {
+          method: "POST",
+          body: JSON.stringify({
+            status: "processing",
+            repoUrl,
+            stage: "GENERATING_REPORT", // <--- NEW STAGE
+            timestamp: new Date().toISOString(),
+          }),
+        });
+
 
         // [FIX] Check for error returned from previous step
         if ((auditResult as any).error) {

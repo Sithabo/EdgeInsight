@@ -110,12 +110,40 @@ export default function SecurityDeepDive() {
                 </div>
                 <div className="flex-1 overflow-y-auto font-mono text-sm leading-relaxed bg-[#0d1117] relative">
                   <div className="bg-red-500/10 border-b border-red-500/20 p-4 mb-0">
-                    <strong className="text-red-400 text-xs uppercase tracking-wider">
-                      Vulnerability Detected:
-                    </strong>
-                    <p className="text-slate-300 text-sm mt-1">
-                      {selectedRisk.description}
-                    </p>
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <strong className="text-red-400 text-xs uppercase tracking-wider">
+                          Vulnerability Detected:
+                        </strong>
+                        <p className="text-slate-300 text-sm mt-1">
+                          {selectedRisk.description}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const prompt = `I have a security vulnerability in my code.
+                          
+File: ${selectedRisk.file}
+Vulnerability: ${selectedRisk.description}
+
+Here is the code snippet:
+\`\`\`
+${selectedRisk.snippet}
+\`\`\`
+
+Please analyze this vulnerability and provide a secure, drop-in replacement fix that addresses the issue while maintaining the original functionality. explain why the fix is secure.`;
+                          navigator.clipboard.writeText(prompt);
+                          // Simple alert or toast could go here, or we can use a local state to show "Copied!"
+                          alert("Fix Prompt copied to clipboard!");
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-xs font-bold text-red-400 transition-colors shrink-0"
+                      >
+                        <span className="material-symbols-outlined text-sm">
+                          auto_fix
+                        </span>
+                        Generate Fix Prompt
+                      </button>
+                    </div>
                   </div>
 
                   {selectedRisk.snippet ? (

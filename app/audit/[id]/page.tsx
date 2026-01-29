@@ -38,15 +38,34 @@ export default function AuditPage() {
   }, [data]);
 
   // Loading Animation Logic
-  const [logIndex, setLogIndex] = useState(0);
+  const [loadingText, setLoadingText] = useState("Initializing...");
 
+  // Map backend stages to user-friendly messages
   useEffect(() => {
-    if (!loading) return;
-    const interval = setInterval(() => {
-      setLogIndex((prev) => (prev + 1) % LOADING_LOGS.length);
-    }, 1500);
-    return () => clearInterval(interval);
-  }, [loading]);
+    if (!data) {
+      setLoadingText("Initializing connection...");
+      return;
+    }
+
+    switch (data.stage) {
+      case "FETCHING_REPO":
+        setLoadingText("Fetching repository files and history...");
+        break;
+      case "ANALYZING_CODE":
+        setLoadingText("AI analyzing code structure and security...");
+        break;
+      case "GENERATING_REPORT":
+        setLoadingText("Compiling final security report...");
+        break;
+      case "AI_ANALYSIS_STARTED":
+        setLoadingText("Spinning up analysis engine...");
+        break;
+      default:
+        // Fallback or cyclical loading messages could go here if stage is unknown
+        setLoadingText("Processing repository data...");
+        break;
+    }
+  }, [data]);
 
   useEffect(() => {
     if (data?.status === "completed" && data.audit) {
@@ -114,23 +133,13 @@ export default function AuditPage() {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold mb-8 text-white tracking-tight text-center">
-            Analyzing Repository<span className="animate-pulse">...</span>
+            {loadingText}
+            <span className="animate-pulse">...</span>
           </h1>
 
-          <div className="h-16 flex items-center justify-center w-full max-w-md bg-black/40 backdrop-blur-md rounded-xl border border-white/10 p-4 shadow-2xl">
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={logIndex}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="text-primary font-mono text-sm md:text-base font-medium flex items-center gap-2"
-              >
-                <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                {LOADING_LOGS[logIndex]}
-              </motion.p>
-            </AnimatePresence>
+          {/* Progress bar or additional context could go here */}
+          <div className="text-slate-400 font-mono text-sm">
+            Status: {data?.stage || "QUEUED"}
           </div>
         </div>
       </div>
