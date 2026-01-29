@@ -20,7 +20,11 @@ export interface AuditResponse {
   audit?: AuditDetails;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+if (!API_BASE) {
+  console.warn("NEXT_PUBLIC_BACKEND_URL is not defined. API calls will fail.");
+}
 
 export async function submitAudit(
   repoUrl: string,
