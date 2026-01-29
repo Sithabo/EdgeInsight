@@ -43,3 +43,6 @@ next-env.d.ts
 # Cloudflare Workers
 .wrangler
 .dev.vars
+
+# AI Agents
+.*

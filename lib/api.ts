@@ -20,7 +20,7 @@ export interface AuditResponse {
   audit?: AuditDetails;
 }
 
-const API_BASE = "http://localhost:8787"; // Update with actual Worker URL if different
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 export async function submitAudit(
   repoUrl: string,
