@@ -19,7 +19,7 @@ export interface AuditResponse {
   error?: string;
   filesFound?: number;
   audit?: AuditDetails;
-  
+  stage?: string;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
