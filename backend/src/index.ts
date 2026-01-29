@@ -158,7 +158,7 @@ export class AuditWorkflow extends WorkflowEntrypoint<
           }
           
           Constraints:
-          - Summary: Write 2-3 professional sentences.
+          - Summary: Write 2-3 professional sentences between 60-80 words.
           - Security Risks: Return exactly 3 most relevant risks.
           - Snippet: Limit to 10 lines. MUST ESCAPE ALL DOUBLE QUOTES inside the JSON string values.
           - Verdict Score: MUST be a Letter Grade (A+, A, ... F).
