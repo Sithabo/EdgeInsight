@@ -8,6 +8,7 @@ export interface AuditDetails {
     file: string;
     description: string;
     snippet?: string;
+    lineNumber?: number;
   }>;
 }
 
@@ -18,6 +19,7 @@ export interface AuditResponse {
   error?: string;
   filesFound?: number;
   audit?: AuditDetails;
+  
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;

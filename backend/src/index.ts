@@ -65,12 +65,13 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         try {
           files = await fetchGithubRepo(repoUrl, this.env.GITHUB_TOKEN);
         } catch (e: any) {
-          // If fetch fails, we throw to trigger the global error handler
-          throw new Error(`Fetch Failed: ${e.message}`);
+          // [FIX] Do NOT throw here, or the Workflow will retry indefinitely.
+          // Return an error object so we can handle it gracefully in the next step.
+          return { error: e.message || "Fetch Failed", filesFound: 0 };
         }
 
         if (!files || files.length === 0) {
-          throw new Error("No files found in repository");
+           return { error: "No files found in repository", filesFound: 0 };
         }
 
         // --- 2. UPDATE STATUS (Fire & Forget) ---
@@ -123,7 +124,7 @@ export class AuditWorkflow extends WorkflowEntrypoint<
             "tech_stack": ["string"],
             "cloudflare_native": boolean,
             "security_risks": [
-              { "severity": "critical" | "high" | "medium", "file": "string", "description": "string", "snippet": "string" }
+              { "severity": "critical" | "high" | "medium", "file": "string", "description": "string", "snippet": "string", "lineNumber": number }
             ]
           }
           
@@ -132,6 +133,8 @@ export class AuditWorkflow extends WorkflowEntrypoint<
           - Security Risks: Return exactly 3 most relevant risks (prioritize Critical/High).
           - Snippet: Limit to 10 lines. MUST ESCAPE ALL DOUBLE QUOTES inside the snippet (e.g. \"var x = \\\"y\\\";\").
           - Verdict Score: MUST be a Letter Grade (A+, A, A-, B+, B, B-, C, D, F). 'F' if critical secrets are hardcoded.
+          - Line Number: The exact line number in the source file where the snippet begins.
+          
 
           Do NOT use Markdown formatting. Return ONLY the raw JSON string.`,
           },
@@ -191,7 +194,21 @@ export class AuditWorkflow extends WorkflowEntrypoint<
         const id = this.env.AUDIT_RESULTS.idFromString(auditId);
         const stub = this.env.AUDIT_RESULTS.get(id);
 
-        const { audit, filesFound } = auditResult;
+        // [FIX] Check for error returned from previous step
+        if ((auditResult as any).error) {
+           await stub.fetch("http://do/save", {
+            method: "POST",
+            body: JSON.stringify({
+              status: "failed",
+              error: (auditResult as any).error,
+              repoUrl,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+          return;
+        }
+
+        const { audit, filesFound } = auditResult as any;
 
         await stub.fetch("http://do/save", {
           method: "POST",

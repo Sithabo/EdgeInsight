@@ -7,31 +7,11 @@ export default function Footer() {
         <div className="flex items-center gap-2 opacity-50">
           <span className="material-symbols-outlined text-sm">cloud</span>
           <p className="text-sm font-medium uppercase tracking-widest">
-            Powered by Cloudflare Workers
+            Built with Cloudflare Workers, Pages & Llama 3
           </p>
         </div>
-        <div className="flex gap-8">
-          <a
-            className="text-sm text-slate-500 hover:text-white transition-colors"
-            href="#"
-          >
-            Privacy Policy
-          </a>
-          <a
-            className="text-sm text-slate-500 hover:text-white transition-colors"
-            href="#"
-          >
-            Terms of Service
-          </a>
-          <a
-            className="text-sm text-slate-500 hover:text-white transition-colors"
-            href="#"
-          >
-            Security
-          </a>
-        </div>
         <div className="text-sm text-slate-600">
-          © 2024 EdgeInsight AI. All rights reserved.
+          © {new Date().getFullYear()} EdgeInsight. All rights reserved.
         </div>
       </div>
     </footer>

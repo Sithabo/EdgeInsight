@@ -119,9 +119,19 @@ export default function SecurityDeepDive() {
                   </div>
 
                   {selectedRisk.snippet ? (
-                    <div className="syntax-highlighter-wrapper">
+                    <div className="syntax-highlighter-wrapper relative">
+                      {/* Visual Marker for the specific line */}
+                      {selectedRisk.lineNumber && (
+                        <div
+                          className="absolute left-0 right-0 h-[1.5em] bg-red-500/10 border-l-2 border-red-500 pointer-events-none"
+                          style={{
+                            top: "1.5rem",
+                          }} /* Adjust based on padding */
+                        ></div>
+                      )}
+
                       <SyntaxHighlighter
-                        language="typescript" // You can make this dynamic based on file extension if you want
+                        language="typescript"
                         style={vscDarkPlus}
                         customStyle={{
                           margin: 0,
@@ -130,10 +140,24 @@ export default function SecurityDeepDive() {
                           fontSize: "14px",
                         }}
                         showLineNumbers={true}
+                        // [FIX 1] Tell the editor to start counting at the real line number
+                        startingLineNumber={selectedRisk.lineNumber || 1}
                         wrapLines={true}
                         lineProps={(lineNumber) => {
-                          // Optional: Highlight specific lines if the AI gives us line numbers in the future
-                          return { style: { display: "block" } };
+                          // [FIX 2] Highlight the first line of the snippet (since that's usually the target)
+                          const isTargetLine =
+                            lineNumber === (selectedRisk.lineNumber || 1);
+                          return {
+                            style: {
+                              display: "block",
+                              backgroundColor: isTargetLine
+                                ? "rgba(255, 59, 48, 0.1)"
+                                : undefined,
+                              borderLeft: isTargetLine
+                                ? "3px solid #ff3b30"
+                                : "3px solid transparent",
+                            },
+                          };
                         }}
                       >
                         {selectedRisk.snippet}

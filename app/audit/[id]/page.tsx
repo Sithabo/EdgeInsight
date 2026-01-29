@@ -5,8 +5,12 @@ export const runtime = "edge";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import { useAudit } from "@/hooks/useAudit";
+import { useRecentAudits } from "@/hooks/useRecentAudits";
+import { FlickeringGrid } from "@/components/ui/flickering-grid";
+import { cn } from "@/lib/utils";
 
 const LOADING_LOGS = [
   "> [INFO] Fetching commit history from main...",
@@ -23,6 +27,16 @@ export default function AuditPage() {
   const id = params.id as string;
   const { data, loading } = useAudit(id);
 
+  const { saveAudit } = useRecentAudits();
+
+  // Dynamic Title
+  useEffect(() => {
+    if (data?.repoUrl) {
+      const repoName = data.repoUrl.replace("https://github.com/", "");
+      document.title = `${data.audit?.verdict_score || "Audit"} - ${repoName} | EdgeInsight`;
+    }
+  }, [data]);
+
   // Loading Animation Logic
   const [logIndex, setLogIndex] = useState(0);
 
@@ -34,6 +48,41 @@ export default function AuditPage() {
     return () => clearInterval(interval);
   }, [loading]);
 
+  useEffect(() => {
+    if (data?.status === "completed" && data.audit) {
+      saveAudit({
+        id: id,
+        repoUrl: data.repoUrl,
+        score: data.audit.verdict_score,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }, [data?.status, data?.audit, data?.repoUrl, id]);
+
+  function ShareButton() {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+      if (typeof window !== "undefined") {
+        navigator.clipboard.writeText(window.location.href);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    };
+
+    return (
+      <button
+        onClick={handleCopy}
+        className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white"
+      >
+        <span className="material-symbols-outlined text-sm">
+          {copied ? "check" : "ios_share"}
+        </span>
+        {copied ? "Copied!" : "Share Report"}
+      </button>
+    );
+  }
+
   // -- STATE 1: LOADING --
   if (
     loading ||
@@ -42,16 +91,47 @@ export default function AuditPage() {
     data.status === "processing"
   ) {
     return (
-      <div className="bg-background-light dark:bg-background-dark font-display text-white selection:bg-primary/30 overflow-hidden min-h-screen flex flex-col">
-        {/* ... (Keep your existing Loading UI code here exactly as is) ... */}
-        {/* For brevity, I am not repeating the 100 lines of loading HTML, keep it! */}
+      <div className="bg-background-light dark:bg-background-dark font-display text-white selection:bg-primary/30 overflow-hidden min-h-screen flex flex-col relative">
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <FlickeringGrid
+            className="z-0 absolute inset-0 size-full"
+            squareSize={4}
+            gridGap={6}
+            color="#f37f20"
+            maxOpacity={0.15}
+            flickerChance={0.1}
+          />
+        </div>
 
-        {/* TEMPORARY PLACEHOLDER FOR LOADING UI - PASTE YOUR EXISTING LOADING UI HERE */}
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <h1 className="text-2xl animate-pulse text-primary">
-            Edge Pipeline Active...
+        <div className="flex-1 flex flex-col items-center justify-center relative z-10 p-6">
+          <div className="mb-10 relative">
+            <div className="size-20 rounded-full bg-primary/20 animate-pulse absolute inset-0 blur-xl"></div>
+            <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center border border-primary/40 shadow-[0_0_30px_rgba(243,127,32,0.2)]">
+              <span className="material-symbols-outlined text-primary text-4xl animate-spin">
+                sync
+              </span>
+            </div>
+          </div>
+
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 text-white tracking-tight text-center">
+            Analyzing Repository<span className="animate-pulse">...</span>
           </h1>
-          <p className="text-slate-500 mt-2">{LOADING_LOGS[logIndex]}</p>
+
+          <div className="h-16 flex items-center justify-center w-full max-w-md bg-black/40 backdrop-blur-md rounded-xl border border-white/10 p-4 shadow-2xl">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={logIndex}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="text-primary font-mono text-sm md:text-base font-medium flex items-center gap-2"
+              >
+                <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                {LOADING_LOGS[logIndex]}
+              </motion.p>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     );
@@ -60,10 +140,20 @@ export default function AuditPage() {
   // -- STATE 2: ERROR --
   if (data?.status === "failed") {
     return (
-      <div className="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col">
+      <div className="bg-background-light dark:bg-background-dark font-display min-h-screen flex flex-col relative">
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-20">
+          <FlickeringGrid
+            className="z-0 absolute inset-0 size-full"
+            squareSize={4}
+            gridGap={6}
+            color="#ff3b30"
+            maxOpacity={0.1}
+            flickerChance={0.05}
+          />
+        </div>
         <Navbar />
-        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-8 max-w-md w-full">
+        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center relative z-10">
+          <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-8 max-w-md w-full backdrop-blur-sm">
             <span className="material-symbols-outlined text-5xl text-red-500 mb-4">
               error
             </span>
@@ -100,35 +190,48 @@ export default function AuditPage() {
         : "text-red-500"; // D/F grades
 
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+    <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen relative">
       <Navbar />
 
-      <main className="max-w-[1200px] mx-auto px-6 py-8">
+      <main className="max-w-[1200px] mx-auto px-6 py-8 relative z-10">
         {/* Breadcrumbs & Header */}
         <div className="flex flex-col gap-6 mb-10">
-          <div className="flex flex-wrap gap-2 items-center">
-            <Link
-              href="/"
-              className="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary"
-            >
-              Repositories
-            </Link>
-            <span className="text-slate-400 text-sm font-medium">/</span>
-            <span className="text-slate-900 dark:text-white text-sm font-bold">
-              {data.repoUrl
-                ? data.repoUrl.replace("https://github.com/", "")
-                : "Unknown Repo"}
-            </span>
+          <div className="flex flex-wrap gap-2 items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="text-slate-500 dark:text-slate-400 text-sm font-medium hover:text-primary"
+              >
+                Repositories
+              </Link>
+              <span className="text-slate-400 text-sm font-medium">/</span>
+              <span className="text-slate-900 dark:text-white text-sm font-bold">
+                {data.repoUrl
+                  ? data.repoUrl.replace("https://github.com/", "")
+                  : "Unknown Repo"}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm font-medium transition-all text-slate-300 hover:text-white"
+              >
+                <span className="material-symbols-outlined text-sm">print</span>
+                Export PDF
+              </button>
+              <ShareButton />
+            </div>
           </div>
 
-          <div className="flex gap-6">
-            <div className="bg-gradient-to-br from-primary to-orange-700 rounded-xl min-h-32 w-32 flex items-center justify-center text-white">
-              <span className="material-symbols-outlined text-6xl">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="bg-gradient-to-br from-primary to-orange-700 rounded-xl min-h-24 md:min-h-32 w-24 md:w-32 flex items-center justify-center text-white shrink-0">
+              <span className="material-symbols-outlined text-4xl md:text-6xl">
                 folder_zip
               </span>
             </div>
             <div className="flex flex-col justify-center">
-              <h1 className="text-slate-900 dark:text-white text-3xl font-bold mb-1">
+              <h1 className="text-slate-900 dark:text-white text-2xl md:text-3xl font-bold mb-1 break-all">
                 {data.repoUrl
                   ? data.repoUrl.replace("https://github.com/", "")
                   : "Repository Audit"}
@@ -147,9 +250,9 @@ export default function AuditPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 ai-glow-bg rounded-3xl p-4">
           {/* Score Card */}
           <div className="lg:col-span-3">
-            <div className="flex flex-col h-full items-center justify-center gap-4 rounded-2xl p-8 border border-primary/30 bg-card-dark shadow-2xl relative overflow-hidden group">
+            <div className="flex flex-col h-full items-center justify-center gap-4 rounded-2xl p-8 border border-primary/30 bg-card-dark shadow-2xl relative overflow-hidden group min-h-[300px]">
               <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <p className="text-slate-400 text-lg font-medium uppercase tracking-widest">
+              <p className="text-slate-400 text-lg font-medium uppercase tracking-widest text-center">
                 Verdict Score
               </p>
               <div className="relative">
@@ -186,7 +289,7 @@ export default function AuditPage() {
                 {report.summary || "Generating summary..."}
               </p>
 
-              <div className="flex items-center justify-between border-t border-white/10 pt-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-t border-white/10 pt-4 gap-4">
                 <div className="flex gap-2">
                   {/* Only show badge if native */}
                   {report.cloudflare_native && (
