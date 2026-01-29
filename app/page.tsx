@@ -69,10 +69,51 @@ function RecentScans() {
 export default function Home() {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
+
+  // Helper validation function
+  const isValidGithubUrl = (input: string) => {
+    try {
+      // Basic URL structure check
+      if (!input.includes("github.com")) return false;
+
+      // Clean url (remove protocol) to check path
+      const cleanUrl = input.replace(/^https?:\/\//, "").replace("www.", "");
+
+      // Must start with github.com/
+      if (!cleanUrl.startsWith("github.com/")) return false;
+
+      const parts = cleanUrl.split("/");
+      // Must have exactly: github.com, owner, repo (at least)
+      // parts[0] = github.com
+      // parts[1] = owner
+      // parts[2] = repo
+      if (parts.length < 3) return false;
+
+      // Ensure owner and repo are not empty strings
+      if (!parts[1] || !parts[2]) return false;
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
 
   const submitAudit = async (repoUrl: string) => {
     if (!repoUrl) return;
+
+    // Clear previous errors
+    setError("");
+
+    // Validate Frontend First
+    if (!isValidGithubUrl(repoUrl)) {
+      setError(
+        "Please enter a valid GitHub repository URL (e.g. https://github.com/owner/repo)",
+      );
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { submitAudit } = await import("../lib/api");
@@ -142,11 +183,12 @@ export default function Home() {
             </p>
 
             {/* Input Bar */}
-            <div className="w-full max-w-3xl relative group">
+            <div className="w-full max-w-3xl flex flex-col gap-3">
               <div
                 className={cn(
                   "glass-panel p-2 rounded-2xl flex flex-col md:flex-row gap-2 items-stretch shadow-2xl transition-all relative overflow-hidden",
-                  "bg-black/40 backdrop-blur-xl border border-white/10", // Replaced custom CSS class partly, kept glass-panel for legacy if used elsewhere, but redefining mainly here
+                  "bg-black/40 backdrop-blur-xl border border-white/10",
+                  error ? "border-red-500/50" : "border-white/10",
                 )}
               >
                 <div className="flex items-center px-4 text-slate-500 py-2 md:py-0 justify-center md:justify-start">
@@ -157,7 +199,10 @@ export default function Home() {
                   placeholder="Paste GitHub Repository URL..."
                   type="text"
                   value={url}
-                  onChange={(e) => setUrl(e.target.value)}
+                  onChange={(e) => {
+                    setUrl(e.target.value);
+                    if (error) setError(""); // Clear error on edit
+                  }}
                   onKeyDown={handleKeyDown}
                   disabled={isLoading}
                 />
@@ -184,6 +229,16 @@ export default function Home() {
                   )}
                 </button>
               </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="animate-in fade-in slide-in-from-top-2 text-red-400 text-sm font-medium flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-sm">
+                    error
+                  </span>
+                  {error}
+                </div>
+              )}
             </div>
 
             {/* Stacks Grid */}
